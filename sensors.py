@@ -288,6 +288,8 @@ class replayer:
         
     @staticmethod
     def init_replay(filename):
+        """ Load replay data from file. The replay data should be a CSV file which has a column for each sensor you are recording from.
+        """
         with open(filename) as f:
             lines=f.read()
             _on_lines(lines,filename)
