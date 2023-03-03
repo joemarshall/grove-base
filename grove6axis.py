@@ -49,7 +49,9 @@ IRA_REG_M=0x0A
 IRB_REG_M=0x0B
 IRC_REG_M=0x0C
 
-SIX_AXIS_ACCEL_ADDR=0x1e
+STATUS_REG_M=None
+
+SIX_AXIS_ACCEL_ADDR=0x18
 SIX_AXIS_MAG_ADDR=0x1e
 
 import smbus2 as smbus
@@ -74,7 +76,10 @@ def _initv2(scale):
     global OUT_Y_H_A
     global OUT_Z_L_A
     global OUT_Z_H_A
+    global STATUS_REG_M
+    print("V2 INIT")
     SIX_AXIS_ACCEL_ADDR=SIX_AXIS_MAG_ADDR
+    STATUS_REG_M    = 0x07
     OUT_X_L_M       = 0x08
     OUT_X_H_M       = 0x09
     OUT_Y_L_M       = 0x0A
@@ -149,6 +154,10 @@ def getMag():
     global is6axisInitialised
     if not is6axisInitialised:
       init6Axis()
+    if STATUS_REG_M is not None:
+      # wait until value ready
+      while LSM303_read(STATUS_REG_M)&0x08 !=0x08:
+        pass
     x= LSM303_readSigned16Bit(OUT_X_L_M,OUT_X_H_M)
     y= LSM303_readSigned16Bit(OUT_Y_L_M,OUT_Y_H_M)
     z= LSM303_readSigned16Bit(OUT_Z_L_M,OUT_Z_H_M)
