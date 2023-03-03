@@ -285,6 +285,12 @@ class replayer:
         replayer._replay_lines=[make_numbers(x) for x in r if len(x)==len(replayer._replay_columns)]
 
         replayer.reset()
+        
+    @staticmethod
+    def init_replay(filename):
+        with open(filename) as f:
+            lines=f.read()
+            _on_lines(lines,filename)
 
     @staticmethod
     def get_replay_name():
