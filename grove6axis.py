@@ -77,7 +77,6 @@ def _initv2(scale):
     global OUT_Z_L_A
     global OUT_Z_H_A
     global STATUS_REG_M
-    print("V2 INIT")
     SIX_AXIS_ACCEL_ADDR=SIX_AXIS_MAG_ADDR
     STATUS_REG_M    = 0x07
     OUT_X_L_M       = 0x08
