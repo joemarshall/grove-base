@@ -331,7 +331,7 @@ class replayer:
         """
         if not replayer._replay_lines:
             return True
-        return (replayer._pos<len(replayer._replay_lines)-1)
+        return (replayer._pos>=len(replayer._replay_lines)-1)
 
     @staticmethod
     def get_level(*col_names):        
