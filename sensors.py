@@ -138,7 +138,7 @@ class MagnetometerSensor:
     are typically X,Y axes side to side and top to bottom on the screen, Z coming out of the screen. 
     """
     def __init__(self):
-        if not _does_i2c_device_exist(0x18):
+        if not _does_i2c_device_exist(0x1e):
             raise IOError("Please connect an accelerometer and magnetometer board (not gyro board)")
 
     def get_xyz(self):
