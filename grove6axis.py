@@ -248,5 +248,5 @@ def LSM303_read( address):
 if __name__=="__main__":
     init6Axis()
     while True:
-        print((getAccel(),getOrientation()))
+        print((getAccel(),getOrientation(),getMag()))
         time.sleep(0.5)
