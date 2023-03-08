@@ -125,10 +125,13 @@ def addGraphData(data,x,y,columns,rows):
             outVal=min(outVal,1)
             outVal=7-math.floor(outVal*7.5)
             thisRow[c+startChar]=outVal
-        if _prevData[rowIDX]!=thisRow:
-            _prevData[rowIDX]=thisRow
-            textCommand(0x80|(0x40*rowIDX)) # line X select
-            bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,thisRow)            
+        try:
+            if _prevData[rowIDX]!=thisRow:
+                textCommand(0x80|(0x40*rowIDX)) # line X select
+                bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,thisRow)            
+                _prevData[rowIDX]=thisRow
+        except IOException:
+            pass
     else:
         row1,row2=_prevData[0][:],_prevData[1][:]
         for c in range(0,numChars):
@@ -146,14 +149,17 @@ def addGraphData(data,x,y,columns,rows):
             else:
                 row1[c+startChar]=outVal
                 row2[c+startChar]=ord(' ')
-        if _prevData[0]!=row1:
-            _prevData[0]=row1
-            textCommand(0x80) # line X select
-            bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,row1)            
-        if _prevData[1]!=row2:
-            _prevData[0]=row2
-            textCommand(0xc0) # line X select
-            bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,row2)            
+        try:
+            if _prevData[0]!=row1:
+                textCommand(0x80) # line X select
+                bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,row1)            
+                _prevData[0]=row1
+            if _prevData[1]!=row2:
+                textCommand(0xc0) # line X select
+                bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,row2)
+                _prevData[1]=row2
+         except IOException:
+            pass
         _prevData=[row1,row2]
         # spread graph over 2 rows
         
