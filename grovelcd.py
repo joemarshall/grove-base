@@ -158,7 +158,7 @@ def addGraphData(data,x,y,columns,rows):
                 textCommand(0xc0) # line X select
                 bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,row2)
                 _prevData[1]=row2
-         except IOException:
+        except IOException:
             pass
         _prevData=[row1,row2]
         # spread graph over 2 rows
