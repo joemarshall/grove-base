@@ -106,6 +106,9 @@ def setText(text,clear=False):
 
     
 def addGraphData(data,x,y,columns,rows):
+    global firstTime
+    if firstTime:
+        setText("",True)
     data=list(data)
     global _prevData
     numChars=16//columns
