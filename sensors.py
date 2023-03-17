@@ -39,6 +39,9 @@ def set_pins(sensor_pin_mapping:dict):
             new_sensor=DigitalPinSensor(pin)
         elif sensorName=="ultrasonic":
             new_sensor=UltrasonicSensor(pin)
+        elif sensorName=="nfc":
+            # NFC reader on i2c port
+            new_sensor=NFCReader()
         if new_sensor!=None:
             globals()[sensorName+sensorNum]=new_sensor
 
@@ -56,6 +59,18 @@ def _does_i2c_device_exist(addr):
 
 # mapping from sensor to pin
 _SENSOR_PIN_MAP={}
+
+class NFCReader:
+    def __init__(self):
+        if not _does_i2c_device_exist(0x24):
+            raise RuntimeError("Can't find NFC reader on I2C port")
+        import pn532
+        self.nfc=pn532.PN532()
+        self.nfc.begin()
+        self.nfc.SAM_configuration()
+
+    def get_level(self):
+        return self.nfc.read_passive_target(timeout_sec=0.0000000001)
 
 class AnalogPinSensor:
     def __init__(self,pin):
@@ -354,6 +369,8 @@ class replayer:
             return [ret_val[replayer._replay_columns[x]] for x in col_names]
         else:
             return ret_val
+        
+
 
 
 if __name__=="__main__":
