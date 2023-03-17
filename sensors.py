@@ -153,7 +153,7 @@ class MagnetometerSensor:
     are typically X,Y axes side to side and top to bottom on the screen, Z coming out of the screen. 
     """
     def __init__(self):
-        if not _does_i2c_device_exist(0x18):
+        if not _does_i2c_device_exist(0x1e):
             raise IOError("Please connect an accelerometer and magnetometer board (not gyro board)")
 
     def get_xyz(self):
@@ -300,6 +300,14 @@ class replayer:
         replayer._replay_lines=[make_numbers(x) for x in r if len(x)==len(replayer._replay_columns)]
 
         replayer.reset()
+        
+    @staticmethod
+    def init_replay(filename):
+        """ Load replay data from file. The replay data should be a CSV file which has a column for each sensor you are recording from.
+        """
+        with open(filename) as f:
+            lines=f.read()
+            replayer._on_lines(lines,filename)
 
     @staticmethod
     def get_replay_name():
@@ -338,7 +346,7 @@ class replayer:
         """
         if not replayer._replay_lines:
             return True
-        return (replayer._pos<len(replayer._replay_lines)-1)
+        return (replayer._pos>=len(replayer._replay_lines)-1)
 
     @staticmethod
     def get_level(*col_names):        
