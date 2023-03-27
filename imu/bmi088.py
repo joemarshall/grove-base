@@ -2,7 +2,7 @@ import smbus2 as smbus
 
 import struct 
 import time 
-from enum import Enum
+from enum import IntEnum
 from .imubase import *
 
 class BMI088(IMUBase):
@@ -14,7 +14,7 @@ class BMI088(IMUBase):
     def has_gyro():
         return True
     
-    class Regs(Enum):
+    class Regs(IntEnum):
         BMI088_ACC_ADDRESS         =0x19
 
         BMI088_ACC_CHIP_ID         =0x00 

@@ -1,4 +1,4 @@
-from imubase import *
-import bmi088
-import lsm303d
-import bma400
+from .imubase import *
+from .bmi088 import *
+from .lsm303d import *
+from .bma400 import *

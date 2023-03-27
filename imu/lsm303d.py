@@ -2,7 +2,7 @@
 # -*- coding: ascii -*-
 
 import time,sys,struct
-from enum import Enum
+from enum import IntEnum
 from .imubase import *
 
 X_AXIS=0
@@ -23,10 +23,8 @@ class LSM303D(IMUBase):
 
     def __init__(self):
         self.is_initialised=False
-        self.regs=LSM303D.Regs
 
-
-    class Regs(Enum):
+    class Regs(IntEnum):
         # LSM303D Register definitions 
         CTRL_REG1_A=0x20
         CTRL_REG2_A=0x21
@@ -85,51 +83,46 @@ class LSM303D(IMUBase):
 
     def _startup(self):
         self.bus=smbus.SMBus(1)
-        self.write(0x17, self.regs.CTRL_REG1)               # ODR=400hz, all accel axes on, normal bias
-        self.write(0, self.regs.CTRL_REG2)      # no high pass filter
+        self.write(0x7f, LSM303D.Regs.CTRL_REG1)               # ODR=200hz, all accel axes on, block data read
+        self.write(0x8, LSM303D.Regs.CTRL_REG2)      # scale -+4g
         self.ACCEL_SCALE=4
         self.MAG_SCALE=4
-        self.write(0x00, self.regs.CTRL_REG3)           # no interrupt
-        self.write(0x10, self.regs.CTRL_REG4)           # full scale = 4g
-        self.write(0, self.regs.CTRL_REG5)             # no sleep
-        self.write(0x18, self.regs.CRA_REG_M)             # 75hz magnetometer readings        
-        self.write(0x80, self.regs.CRB_REG_M)        # magnetic scale = +/-4 Gauss
-        self.write(0x00, self.regs.MR_REG_M)           # 0x00 = continouous conversion mode
+        self.write(0x00, LSM303D.Regs.CTRL_REG3)           # no interrupt 1
+        self.write(0x00, LSM303D.Regs.CTRL_REG4)           # no interrupt 2
+        self.write(0x74, LSM303D.Regs.CTRL_REG5)             # high quality, read 100hz
+        self.write(0x28, LSM303D.Regs.CTRL_REG6) # 100hz
+        self.write(0x0, LSM303D.Regs.CTRL_REG7)             # continuous conversion, not low power
         self.is_initialised=True
 
 
     def write(self,data, address):
-        if not self.is_initialised:
-            self._startup()
-        self.bus.write_byte_data(self.regs.SIX_AXIS_ACCEL_ADDR,address,data)
+        self.bus.write_byte_data(LSM303D.Regs.SIX_AXIS_ACCEL_ADDR,address,data)
 
     def read(self, address):
-        if not self.is_initialised:
-            self._startup()
-        return self.bus.read_byte_data(self.regs.SIX_AXIS_ACCEL_ADDR,address)
+        return self.bus.read_byte_data(LSM303D.Regs.SIX_AXIS_ACCEL_ADDR,address)
 
     def get_accel(self):
         """Get accelerometer values (in multiples of g)        
         """
+        if not self.is_initialised:
+            self._startup()
+        x= self.read_signed_16_bit(LSM303D.Regs.OUT_X_L_A,LSM303D.Regs.OUT_X_H_A)
+        y= self.read_signed_16_bit(LSM303D.Regs.OUT_Y_L_A,LSM303D.Regs.OUT_Y_H_A)
+        z= self.read_signed_16_bit(LSM303D.Regs.OUT_Z_L_A,LSM303D.Regs.OUT_Z_H_A)        
         multiplier=self.ACCEL_SCALE/(2.**15.) 
-        x= self.read_signed_16_bit(self.regs.OUT_X_L_A,self.regs.OUT_X_H_A)*multiplier
-        y= self.read_signed_16_bit(self.regs.OUT_Y_L_A,self.regs.OUT_Y_H_A)*multiplier
-        z= self.read_signed_16_bit(self.regs.OUT_Z_L_A,self.regs.OUT_Z_H_A)*multiplier
-        return (x,y,z)
+        return (x*multiplier,y*multiplier,z*multiplier)
 
 
     def get_magnetometer(self):
         """Get magnetometer values. 
         """
-        if self.regs.STATUS_REG_M is not None:
-            # wait until value ready
-            while self.read(self.regs.STATUS_REG_M)&0x08 !=0x08:
-                pass
+        if not self.is_initialised:
+            self._startup()
+        x= self.read_signed_16_bit(LSM303D.Regs.OUT_X_L_M,LSM303D.Regs.OUT_X_H_M)
+        y= self.read_signed_16_bit(LSM303D.Regs.OUT_Y_L_M,LSM303D.Regs.OUT_Y_H_M)
+        z= self.read_signed_16_bit(LSM303D.Regs.OUT_Z_L_M,LSM303D.Regs.OUT_Z_H_M)
         multiplier=self.MAG_SCALE/(2.**15.) 
-        x= self.read_signed_16_bit(self.regs.OUT_X_L_M,self.regs.OUT_X_H_M)*multiplier
-        y= self.read_signed_16_bit(self.regs.OUT_Y_L_M,self.regs.OUT_Y_H_M)*multiplier
-        z= self.read_signed_16_bit(self.regs.OUT_Z_L_M,self.regs.OUT_Z_H_M)*multiplier
-        return (x,y,z)
+        return (x*multiplier,y*multiplier,z*multiplier)
         
     def read_signed_16_bit(self,arg1,arg2):
         bytes=struct.pack("BB",self.read(arg1),self.read(arg2))

@@ -2,7 +2,7 @@
 # -*- coding: ascii -*-
 
 import time,sys,struct
-from enum import Enum
+from enum import IntEnum
 from .imubase import *
 
 X_AXIS=0
@@ -24,7 +24,7 @@ class BMA400(IMUBase):
 
     ADDRESS=0x15
 
-    class Regs(Enum):
+    class Regs(IntEnum):
         # BMA400 register definitions
         BMA400_CHIPID                   =0x00
         BMA400_ERR_REG                  =0x02
@@ -155,18 +155,18 @@ class BMA400(IMUBase):
         BMA400_SELF_TEST                =0x7D
         BMA400_CMD                      =0x7E
 
-    class OversamplingRate(Enum):
+    class OversamplingRate(IntEnum):
         OSR_LOWEST=0x00
         OSR_LOW= 0x01
         OSR_HIGH=0x03
         OSR_HIGHEST=0x03
-    class FilterType(Enum):
+    class FilterType(IntEnum):
         ACC_FILT1 = 0x00
         ACC_FILT2 = 0x01
         ACC_FILT_LP = 0x02
         ACC_FILT11  = 0X03
 
-    class DataRate(Enum):
+    class DataRate(IntEnum):
         ODR_12 = 0x00
         ODR_25 = 0x06
         ODR_50 = 0x07
@@ -175,13 +175,13 @@ class BMA400(IMUBase):
         ODR_400 = 0x0A
         ODR_800 = 0x0B
 
-    class Range(Enum):
+    class Range(IntEnum):
         RANGE_2G = 0x00
         RANGE_4G = 0x01
         RANGE_8G = 0x02
         RANGE_16G = 0x03
 
-    class PowerMode(Enum):
+    class PowerMode(IntEnum):
         SLEEP = 0x00
         LOW_POWER = 0x01
         NORMAL = 0x02

@@ -19,9 +19,10 @@ def __getattr__(name):
 def set_pins(sensor_pin_mapping:dict):
     _PIN_MAP=sensor_pin_mapping
 
-    for sensorName,pin in sensor_pin_mapping.items():
-        sensorName=sensorName.lower()
+    for sensorFullname,pin in sensor_pin_mapping.items():
+        sensorName=sensorFullname.lower()
         sensorName,sensorNum=re.match(r"(\D+)(\d*)",sensorName).groups()
+        sensorNum=0 if sensorNum=="" else int(sensorNum)
         new_sensor=None
         if sensorName=="light" or sensorName=="temperature_analog" or sensorName=="sound" or sensorName=="rotary_angle":
             new_sensor=AnalogPinSensor(pin)
@@ -44,7 +45,7 @@ def set_pins(sensor_pin_mapping:dict):
             # NFC reader on i2c port
             new_sensor=NFCReader()
         if new_sensor!=None:
-            globals()[sensorName+sensorNum]=new_sensor
+            globals()[sensorFullname]=new_sensor
 
 
 def _does_i2c_device_exist(addr):
@@ -199,7 +200,7 @@ class GyroSensor:
     are typically X,Y axes side to side and top to bottom on the screen, Z coming out of the screen. 
     """
 
-    def __init__(self):
+    def __init__(self,num):
         count=num if num is not None else 0
         for x in imu.IMUBase.scan_imus():
             if x.has_magnetometer():

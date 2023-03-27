@@ -29,6 +29,7 @@ class IMUBase:
                 imu_list.append(IMUBase.imu_classes[addr])
             except IOError:
                 pass
+        return imu_list
         
     def get_rotation_matrix(mag=None,accel=None):
         """ Returns a 3x3 matrix of how the device is rotated, based on magnetometer and accelerometer values
