@@ -3,7 +3,8 @@
 
 from math import sqrt
 import io,csv
-import grove6axis,grovepi,grovegyro
+import grovepi
+import imu
 import smbus2 as smbus
 from contextlib import contextmanager
 import re
@@ -26,13 +27,13 @@ def set_pins(sensor_pin_mapping:dict):
             new_sensor=AnalogPinSensor(pin)
         elif sensorName=="gyro":
             # ignore the pin, must be an i2c port
-            new_sensor=GyroSensor()
+            new_sensor=GyroSensor(sensorNum)
         elif sensorName=="accel":
             # ignore the pin, i2c sensor
-            new_sensor=AccelSensor()
+            new_sensor=AccelSensor(sensorNum)
         elif sensorName=="magnetometer":
             # ignore the pin, i2c sensor
-            new_sensor=MagnetometerSensor()
+            new_sensor=MagnetometerSensor(sensorNum)
         elif sensorName=="dht":
             new_sensor=DHTSensor(pin)
         elif sensorName=="pir" or sensorName=="button" or sensorName=="touch":
@@ -109,13 +110,15 @@ class AccelSensor:
     are typically X,Y axes side to side and top to bottom on the screen, Z coming out of the screen. Be aware that in addition
     to any motion of the phone, the accelerometer will pick up a constant $9.8 \\frac{m/s}^2$ acceleration due to gravity.
     """
-    def __init__(self):
-        if _does_i2c_device_exist(0x1E):
-            self.accelFn=grove6axis.getAccel
-        elif _does_i2c_device_exist(0x19):
-            self.accelFn=grovegyro.getAccel
-        else:
-            raise IOError("Please connect an accelerometer board")
+    def __init__(self,num):
+        count=num if num is not None else 0
+        for x in imu.IMUBase.scan_imus():
+            if x.has_accelerometer():
+                count-=1
+                if count<0:
+                    self.imu_class=x()
+                    return
+        raise IOError("Please connect an accelerometer board")
 
     def get_xyz(self):
         """ Get the acceleration of the device
@@ -131,7 +134,7 @@ class AccelSensor:
         z: float
             z axis acceleration in m/s^2
         """
-        return self.accelFn()
+        return self.imu_class.get_accel()
         
     def get_magnitude(self):
         """ Get the magnitude of device acceleration.
@@ -152,12 +155,18 @@ class MagnetometerSensor:
     This allows you to get the magnetic field affecting a device along three axes, X, Y and Z, which for a phone 
     are typically X,Y axes side to side and top to bottom on the screen, Z coming out of the screen. 
     """
-    def __init__(self):
-        if not _does_i2c_device_exist(0x1e):
-            raise IOError("Please connect an accelerometer and magnetometer board (not gyro board)")
+    def __init__(self,num):
+        count=num if num is not None else 0
+        for x in imu.IMUBase.scan_imus():
+            if x.has_magnetometer():
+                count-=1
+                if count<0:
+                    self.imu_class=x()
+                    return
+        raise IOError("Please connect a magnetometer board")
 
     def get_xyz(self):
-        """ Get the acceleration of the device
+        """ Get the magnetic field strength from the device
 
         This is returned in terms of x,y and z axes
 
@@ -170,7 +179,7 @@ class MagnetometerSensor:
         z: float
             z axis magnetic field strength
         """
-        return grove6axis.getMag()
+        return self.imu_class.get_accel()
         
     def get_magnitude(self):
         """ Get the magnitude of magnetic field strength
@@ -191,8 +200,14 @@ class GyroSensor:
     """
 
     def __init__(self):
-        if not _does_i2c_device_exist(0x19):
-            raise IOError("Please connect an accelerometer and gyro board")
+        count=num if num is not None else 0
+        for x in imu.IMUBase.scan_imus():
+            if x.has_magnetometer():
+                count-=1
+                if count<0:
+                    self.imu_class=x()
+                    return
+        raise IOError("Please connect a gyro board")
 
     def get_xyz(self):
         """ Get the rotation of the device
@@ -208,7 +223,7 @@ class GyroSensor:
         z: float
             z axis rotation in radians/s
         """
-        return grovegyro.getGyro()
+        return self.imu_class.get_gyro()
         
     def get_magnitude(self):
         """ Get the magnitude of device rotation
