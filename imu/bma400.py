@@ -1,9 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: ascii -*-
 
-import time,sys,struct
+import time
 from enum import IntEnum
-from .imubase import *
+if __name__!="__main__":
+    from .imubase import *
+else:
+    class IMUBase:
+        pass
 
 X_AXIS=0
 Y_AXIS=1
@@ -202,76 +206,74 @@ class BMA400(IMUBase):
         self.is_initialised=True
 
     def setLatch(self):
-        data=self.read(self.regs.BMA400_INT_CONFIG_1)
+        data=self.read(BMA400.Regs.BMA400_INT_CONFIG_1)
         data=data&0b01111111
         data=data|0x80
-        self.write(self.regs.BMA400_INT_CONFIG_1, data)
+        self.write(BMA400.Regs.BMA400_INT_CONFIG_1, data)
 
     def configIntPin(self):
-        data=self.read(self.regs.BMA400_INT_1_2_CTRL)
+        data=self.read(BMA400.Regs.BMA400_INT_1_2_CTRL)
         data=data&0b11011101
         data=data|0b00100010
-        self.write(self.regs.BMA400_INT_1_2_CTRL,data)
+        self.write(BMA400.Regs.BMA400_INT_1_2_CTRL,data)
 
     def setRouteGen1(self):
-        data=self.read(self.regs.BMA400_INT_1_MAP)
+        data=self.read(BMA400.Regs.BMA400_INT_1_MAP)
         data=data&0b11111011
         data=data|0b00000100
-        self.write(self.regs.BMA400_INT_1_MAP,data)
+        self.write(BMA400.Regs.BMA400_INT_1_MAP,data)
 
     def enableGen1(self):
-        data=self.read(self.regs.BMA400_INT_CONFIG_0)
+        data=self.read(BMA400.Regs.BMA400_INT_CONFIG_0)
         data=data&0b11111011
         data=data|0b00000100
-        self.write(self.regs.BMA400_INT_CONFIG_0,data)
+        self.write(BMA400.Regs.BMA400_INT_CONFIG_0,data)
 
     def setOSR(self,oversampling):
-        data=self.read(self.regs.BMA400_ACC_CONFIG_1)
+        data=self.read(BMA400.Regs.BMA400_ACC_CONFIG_1)
         data=data&0b11001111
         data=data|(oversampling<<4)
-        self.write(self.regs.BMA400_ACC_CONFIG_1,data)
+        self.write(BMA400.Regs.BMA400_ACC_CONFIG_1,data)
 
     def setPoweMode(self,mode):
-        data = self.read(self.regs.BMA400_ACC_CONFIG_0)
+        data = self.read(BMA400.Regs.BMA400_ACC_CONFIG_0)
         data = (data & 0xfc) | mode
-        self.write(self.regs.BMA400_ACC_CONFIG_0, data)
+        self.write(BMA400.Regs.BMA400_ACC_CONFIG_0, data)
 
     def setFullScaleRange(self,range):
         scales={RANGE_2G:2,RANG_4G:4,RANGE_8G:8,RANGE_16G:16}
         self.acc_scale=scales[range]
 
-        data = self.read(self.regs.BMA400_ACC_CONFIG_1)
+        data = self.read(BMA400.Regs.BMA400_ACC_CONFIG_1)
         data = (data & 0x3f) | (range << 6)
-        self.write(self.regs.BMA400_ACC_CONFIG_1, data)
+        self.write(BMA400.Regs.BMA400_ACC_CONFIG_1, data)
 
     def setOutputDataRate(self,odr):
-        data = self.read(self.regs.BMA400_ACC_CONFIG_1)
+        data = self.read(BMA400.Regs.BMA400_ACC_CONFIG_1)
         data = (data & 0xf0) | odr
-        self.write(self.regs.BMA400_ACC_CONFIG_1, data)       
+        self.write(BMA400.Regs.BMA400_ACC_CONFIG_1, data)       
     
     def setFilter(self,filter):
-        data= self.read(self.regs.BMA400_ACC_CONFIG_2)
+        data= self.read(BMA400.Regs.BMA400_ACC_CONFIG_2)
         data= data & 0b11110011
         data= data| (filter<<2)
-        self.write(self.regs.BMA400_ACC_CONFIG_2,data)
+        self.write(BMA400.Regs.BMA400_ACC_CONFIG_2,data)
 
     def write(self,data, address):
-        if not self.is_initialised:
-            self._startup()
         self.bus.write_byte_data(BMA400.ADDRESS,address,data)
 
     def read(self, address):
-        if not self.is_initialised:
-            self._startup()
         return self.bus.read_byte_data(BMA400.ADDRESS,address)
 
     def get_accel(self):
         """Get accelerometer values (in multiples of g)        
         """
+        if not self.is_initialised:
+            self._startup()
         multiplier=self.acc_scale/2048 
-        x= self.readSigned12Bit(self.regs.BMA400_ACC_X_LSB,self.regs.BMA400_ACC_X_MSB)*multiplier
-        y= self.readSigned12Bit(self.regs.BMA400_ACC_Y_LSB,self.regs.BMA400_ACC_Y_MSB)*multiplier
-        z= self.readSigned12Bit(self.regs.BMA400_ACC_Z_LSB,self.regs.BMA400_ACC_Z_MSB)*multiplier
+        x= self.readSigned12Bit(BMA400.Regs.BMA400_ACC_X_LSB,BMA400.Regs.BMA400_ACC_X_MSB)*multiplier
+        y= self.readSigned12Bit(BMA400.Regs.BMA400_ACC_Y_LSB,BMA400.Regs.BMA400_ACC_Y_MSB)*multiplier
+        z= self.readSigned12Bit(BMA400.Regs.BMA400_ACC_Z_LSB,BMA400.Regs.BMA400_ACC_Z_MSB)*multiplier
         return (x,y,z)
 
     def read_signed_12_bit(self,arg1,arg2):
@@ -279,26 +281,13 @@ class BMA400(IMUBase):
         if value>2047:
             value-=4096
         return value
-
-
-    def get_magnetometer(self):
-        """Get magnetometer values. 
-        """
-        if self.regs.STATUS_REG_M is not None:
-            # wait until value ready
-            while self.read(self.regs.STATUS_REG_M)&0x08 !=0x08:
-                pass
-        multiplier=self.MAG_SCALE/(2.**15.) 
-        x= self.readSigned16Bit(self.regs.OUT_X_L_M,self.regs.OUT_X_H_M)*multiplier
-        y= self.readSigned16Bit(self.regs.OUT_Y_L_M,self.regs.OUT_Y_H_M)*multiplier
-        z= self.readSigned16Bit(self.regs.OUT_Z_L_M,self.regs.OUT_Z_H_M)*multiplier
-        return (x,y,z)
         
 
-IMUBase.register_sensor_type(0x15,BMA400)
 
 if __name__=="__main__":
     s=BMA400()
     while True:
-        print((s.get_accel(),s.get_magnetometer()))
+        print(s.get_accel())
         time.sleep(0.01)
+else:
+    IMUBase.register_sensor_type(BMA400.ADDRESS,BMA400)
