@@ -44,6 +44,8 @@ def set_pins(sensor_pin_mapping:dict):
         elif sensorName=="nfc":
             # NFC reader on i2c port
             new_sensor=NFCReader()
+        else:
+            raise RuntimeError("Unknown sensor type:",sensorName)
         if new_sensor!=None:
             globals()[sensorFullname]=new_sensor
 
