@@ -18,7 +18,23 @@ def __getattr__(name):
 
 def set_pins(sensor_pin_mapping:dict):
     _PIN_MAP=sensor_pin_mapping
-
+    # pin indices is used to record all the sensor numbers given to things
+    # this is so that if multiple different IMUs are attached,
+    # we will use the first device for the lowest sensorNum, and the next
+    # device for the following one.
+    # This means that either {"accelerometer0":0,"accelerometer2":0} or
+    # {"accelerometer":0,"accelerometer2":0} will both correctly
+    # give the first two accelerometers attached
+    pin_indices={}
+    for sensorFullname,pin in sensor_pin_mapping.items():
+        sensorName=sensorFullname.lower()
+        sensorName,sensorNum=re.match(r"(\D+)(\d*)",sensorName).groups()
+        sensorNum=0 if sensorNum=="" else int(sensorNum)
+        if sensorName not in pin_indices:
+            pin_indices[sensorName]=[]
+        pin_indices[sensorName].append(sensorNum)
+        pin_indices[sensorName]=sorted(pin_indices[sensorName])
+        
     for sensorFullname,pin in sensor_pin_mapping.items():
         sensorName=sensorFullname.lower()
         sensorName,sensorNum=re.match(r"(\D+)(\d*)",sensorName).groups()
@@ -28,13 +44,13 @@ def set_pins(sensor_pin_mapping:dict):
             new_sensor=AnalogPinSensor(pin)
         elif sensorName=="gyro":
             # ignore the pin, must be an i2c port
-            new_sensor=GyroSensor(sensorNum)
+            new_sensor=GyroSensor(pin_indices[sensorName].index(sensorNum))
         elif sensorName=="accel":
             # ignore the pin, i2c sensor
-            new_sensor=AccelSensor(sensorNum)
+            new_sensor=AccelSensor(pin_indices[sensorName].index(sensorNum))
         elif sensorName=="magnetometer":
             # ignore the pin, i2c sensor
-            new_sensor=MagnetometerSensor(sensorNum)
+            new_sensor=MagnetometerSensor(pin_indices[sensorName].index(sensorNum))
         elif sensorName=="dht":
             new_sensor=DHTSensor(pin)
         elif sensorName=="pir" or sensorName=="button" or sensorName=="touch":
@@ -121,7 +137,7 @@ class AccelSensor:
                 if count<0:
                     self.imu_class=x()
                     return
-        raise IOError("Please connect an accelerometer board")
+        raise IOError(f"Please connect accelerometer board {num+1}")
 
     def get_xyz(self):
         """ Get the acceleration of the device
@@ -166,7 +182,7 @@ class MagnetometerSensor:
                 if count<0:
                     self.imu_class=x()
                     return
-        raise IOError("Please connect a magnetometer board")
+        raise IOError(f"Please connect magnetometer board {num+1}")
 
     def get_xyz(self):
         """ Get the magnetic field strength from the device
@@ -205,12 +221,12 @@ class GyroSensor:
     def __init__(self,num):
         count=num if num is not None else 0
         for x in imu.IMUBase.scan_imus():
-            if x.has_magnetometer():
+            if x.has_gyro():
                 count-=1
                 if count<0:
                     self.imu_class=x()
                     return
-        raise IOError("Please connect a gyro board")
+        raise IOError(f"Please connect gyro board {num+1}")
 
     def get_xyz(self):
         """ Get the rotation of the device

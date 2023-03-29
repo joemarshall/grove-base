@@ -3,7 +3,11 @@ import smbus2 as smbus
 import struct 
 import time 
 from enum import IntEnum
-from .imubase import *
+if __name__=="__main__":
+    class IMUBase:
+        pass
+else:
+    from .imubase import *
 
 class BMI088(IMUBase):
     @staticmethod
@@ -205,12 +209,14 @@ class BMI088(IMUBase):
         mult=self._gyroRange / 32768
         return (ax*mult,ay*mult,az*mult)
 
-IMUBase.register_sensor_type(0x19,BMI088)
 
 if __name__=="__main__":
     b=BMI088()
     while True:
-        print((b.get_accel(),b.get_gyro()))
+        print(b.get_gyro())
+        #print((b.get_accel(),b.get_gyro()))
         time.sleep(0.01)
+else:
+    IMUBase.register_sensor_type(0x19,BMI088)
 
 

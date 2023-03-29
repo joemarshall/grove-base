@@ -241,7 +241,7 @@ class BMA400(IMUBase):
         self.write(BMA400.Regs.BMA400_ACC_CONFIG_0, data)
 
     def setFullScaleRange(self,range):
-        scales={RANGE_2G:2,RANG_4G:4,RANGE_8G:8,RANGE_16G:16}
+        scales={BMA400.Range.RANGE_2G:2,BMA400.Range.RANGE_4G:4,BMA400.Range.RANGE_8G:8,BMA400.Range.RANGE_16G:16}
         self.acc_scale=scales[range]
 
         data = self.read(BMA400.Regs.BMA400_ACC_CONFIG_1)
@@ -271,9 +271,9 @@ class BMA400(IMUBase):
         if not self.is_initialised:
             self._startup()
         multiplier=self.acc_scale/2048 
-        x= self.readSigned12Bit(BMA400.Regs.BMA400_ACC_X_LSB,BMA400.Regs.BMA400_ACC_X_MSB)*multiplier
-        y= self.readSigned12Bit(BMA400.Regs.BMA400_ACC_Y_LSB,BMA400.Regs.BMA400_ACC_Y_MSB)*multiplier
-        z= self.readSigned12Bit(BMA400.Regs.BMA400_ACC_Z_LSB,BMA400.Regs.BMA400_ACC_Z_MSB)*multiplier
+        x= self.read_signed_12_bit(BMA400.Regs.BMA400_ACC_X_LSB,BMA400.Regs.BMA400_ACC_X_MSB)*multiplier
+        y= self.read_signed_12_bit(BMA400.Regs.BMA400_ACC_Y_LSB,BMA400.Regs.BMA400_ACC_Y_MSB)*multiplier
+        z= self.read_signed_12_bit(BMA400.Regs.BMA400_ACC_Z_LSB,BMA400.Regs.BMA400_ACC_Z_MSB)*multiplier
         return (x,y,z)
 
     def read_signed_12_bit(self,arg1,arg2):

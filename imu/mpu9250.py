@@ -44,7 +44,7 @@ class MPU9250(IMUBase):
         USER_CONTROL = 0x6a
         ACC_CONFIG = 0x1C
         ACC_CONFIG2 = 0x1D
-        GYRO_CONFIG = 0x18
+        GYRO_CONFIG = 0x1B
         GYRO_CONFIG2 = 0x1A
 
         I2C_MASTER_CONTROL = 0x24
