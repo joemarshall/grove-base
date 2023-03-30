@@ -7,9 +7,7 @@ from enum import IntEnum
 if __name__!="__main__":
     from .imubase import *
 else:
-    class IMUBase:
-        pass
-import struct
+    from imubase import *
 
 X_AXIS = 0
 Y_AXIS = 1
@@ -17,6 +15,8 @@ Z_AXIS = 2
 
 
 class MPU9250(IMUBase):
+    ADDRESS = 0x68
+    ID_REG_VALUE=(0x75,0x71)
 
     @staticmethod
     def has_accelerometer():
@@ -34,7 +34,6 @@ class MPU9250(IMUBase):
         self.is_initialised = False
         self.regs = MPU9250.Regs
 
-    ADDRESS = 0x68
 
     class Regs(IntEnum):
         # MPU9250 register definitions
@@ -93,7 +92,7 @@ class MPU9250(IMUBase):
         LP_5 = 0x06
 
     def _startup(self):
-        self.bus = smbus.SMBus(1)
+        self.start_i2c(big_endian=True)
         if self.read(MPU9250.Regs.WHOAMI) != 0x71:
             print("WOO")
             raise IOError("MPU9250 returned incorrect device ID:",self.read(MPU9250.Regs.WHOAMI))
@@ -129,8 +128,12 @@ class MPU9250(IMUBase):
         self.write_ak8963(MPU9250.AK8963Regs.CTL, 0b11111)
         time.sleep(0.01)
         mag_scales=self.read_ak8963(MPU9250.AK8963Regs.FUSE_X, 3)
+        # multiply by: 
+        # 1) adjustment value for axis from fuse
+        # 2) 4912.0/32760 to convert to microtesla
+        # 3) 0.01 to convert to gauss
         self.mag_multipliers=[((k - 128.0)/256.0 + 1.0)
-                               *(4912.0/32760.0) for k in mag_scales]
+                               *((0.01*4912.0)/32760.0) for k in mag_scales]
         self.write_ak8963(MPU9250.AK8963Regs.CTL, 0)  # power down
         time.sleep(0.01)
         # 16 bit continous read mode 100hz
@@ -166,25 +169,7 @@ class MPU9250(IMUBase):
         self.write(MPU9250.Regs.I2C_SLAVE0_REG, address)
         self.write(MPU9250.Regs.I2C_SLAVE0_CTRL, count | 0b11000000)
         time.sleep(0.01)
-        data=self.bus.read_i2c_block_data(MPU9250.ADDRESS,MPU9250.Regs.MAG_DATA,count)
-        return data
-
-
-
-    def write(self, address,data ):
-        self.bus.write_byte_data(MPU9250.ADDRESS, address, data)
-
-    def read(self, address):
-        return self.bus.read_byte_data(MPU9250.ADDRESS, address)
-
-    def read_bytes(self, address, length):
-        return self.bus.read_i2c_block_data(MPU9250.ADDRESS, address, length)
-
-    def read_16_bit_words(self, address, length):
-        byte_data=self.read_bytes(address, length*2)
-        format=">"+("h"*length)
-        word_data=struct.unpack(format, bytearray(byte_data))
-        return word_data
+        return self.read_byte_values(MPU9250.Regs.MAG_DATA,count)
 
     def get_accel(self):
         """Get accelerometer values (in multiples of g)
@@ -192,8 +177,7 @@ class MPU9250(IMUBase):
         if not self.is_initialised:
             self._startup()
         multiplier=self.acc_scale/32768
-        data=self.read_16_bit_words(MPU9250.Regs.ACC_DATA, 3)
-        return tuple(k*multiplier for k in data)
+        return self.read_16_bit_values(MPU9250.Regs.ACC_DATA, 3,multiplier=multiplier)
 
     def get_gyro(self):
         """Get gyro values (in multiples of dps)
@@ -201,18 +185,14 @@ class MPU9250(IMUBase):
         if not self.is_initialised:
             self._startup()
         multiplier=self.gyro_scale/32768
-        data=self.read_16_bit_words(MPU9250.Regs.GYRO_DATA, 3)
-        return tuple(k*multiplier for k in data)
+        return self.read_16_bit_values(MPU9250.Regs.GYRO_DATA, 3,multiplier=multiplier)
 
     def get_magnetometer(self):
         """Get magnetometer values (in gauss)
         """
         if not self.is_initialised:
             self._startup()
-        data=self.read_16_bit_words(MPU9250.Regs.MAG_DATA, 3)
-        return tuple(k*multiplier for k, multiplier in zip(data, self.mag_multipliers))
-
-
+        return self.read_16_bit_values(MPU9250.Regs.MAG_DATA, 3,multiplier=self.mag_multipliers)
 
 
 if __name__ == "__main__":
@@ -228,4 +208,4 @@ if __name__ == "__main__":
         print(format_all.format(*s.get_accel(),*s.get_magnetometer(),*s.get_gyro()))
         time.sleep(0.01)
 else:
-    IMUBase.register_sensor_type(MPU9250.ADDRESS, MPU9250)
+    IMUBase.register_sensor_type(MPU9250)

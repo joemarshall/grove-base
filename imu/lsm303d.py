@@ -3,7 +3,10 @@
 
 import time,sys,struct
 from enum import IntEnum
-from .imubase import *
+if __name__!="__main__":
+    from .imubase import *
+else:
+    from imubase import *
 
 X_AXIS=0
 Y_AXIS=1
@@ -12,6 +15,8 @@ Z_AXIS=2
 import smbus2 as smbus
 
 class LSM303D(IMUBase):
+    ADDRESS=0x1e
+    ID_REG_VALUE=(0x0f,0b01001001)
 
     @staticmethod
     def has_accelerometer():
@@ -82,56 +87,43 @@ class LSM303D(IMUBase):
 
 
     def _startup(self):
-        self.bus=smbus.SMBus(1)
-        self.write(0x7f, LSM303D.Regs.CTRL_REG1)               # ODR=200hz, all accel axes on, block data read
-        self.write(0x8, LSM303D.Regs.CTRL_REG2)      # scale -+4g
-        self.ACCEL_SCALE=4
-        self.MAG_SCALE=4
-        self.write(0x00, LSM303D.Regs.CTRL_REG3)           # no interrupt 1
-        self.write(0x00, LSM303D.Regs.CTRL_REG4)           # no interrupt 2
-        self.write(0x74, LSM303D.Regs.CTRL_REG5)             # high quality, read 100hz
-        self.write(0x28, LSM303D.Regs.CTRL_REG6) # 100hz
-        self.write(0x0, LSM303D.Regs.CTRL_REG7)             # continuous conversion, not low power
+        self.start_i2c(big_endian=False)
+
+        self.write(LSM303D.Regs.CTRL_REG1,0x77)               # ODR=200hz, all accel axes on, continuous read
+        self.write(LSM303D.Regs.CTRL_REG2,0x8)      # scale -+4g
+        self.ACCEL_SCALE=4.0
+        self.MAG_SCALE=4.0
+        self.write(LSM303D.Regs.CTRL_REG3,0x00)           # no interrupt 1
+        self.write(LSM303D.Regs.CTRL_REG4,0x00)           # no interrupt 2
+        self.write(LSM303D.Regs.CTRL_REG5,0x74)             # high quality, read 100hz
+        self.write(LSM303D.Regs.CTRL_REG6,0x20)             # -+ 4 gauss
+        self.write(LSM303D.Regs.CTRL_REG7,0x0)             # continuous conversion, not low power
         self.is_initialised=True
 
-
-    def write(self,data, address):
-        self.bus.write_byte_data(LSM303D.Regs.SIX_AXIS_ACCEL_ADDR,address,data)
-
-    def read(self, address):
-        return self.bus.read_byte_data(LSM303D.Regs.SIX_AXIS_ACCEL_ADDR,address)
 
     def get_accel(self):
         """Get accelerometer values (in multiples of g)        
         """
         if not self.is_initialised:
             self._startup()
-        x= self.read_signed_16_bit(LSM303D.Regs.OUT_X_L_A,LSM303D.Regs.OUT_X_H_A)
-        y= self.read_signed_16_bit(LSM303D.Regs.OUT_Y_L_A,LSM303D.Regs.OUT_Y_H_A)
-        z= self.read_signed_16_bit(LSM303D.Regs.OUT_Z_L_A,LSM303D.Regs.OUT_Z_H_A)        
         multiplier=self.ACCEL_SCALE/(2.**15.) 
-        return (x*multiplier,y*multiplier,z*multiplier)
-
+        return self.read_16_bit_values(LSM303D.Regs.OUT_X_L_A,3,multiplier)
 
     def get_magnetometer(self):
         """Get magnetometer values. 
         """
         if not self.is_initialised:
             self._startup()
-        x= self.read_signed_16_bit(LSM303D.Regs.OUT_X_L_M,LSM303D.Regs.OUT_X_H_M)
-        y= self.read_signed_16_bit(LSM303D.Regs.OUT_Y_L_M,LSM303D.Regs.OUT_Y_H_M)
-        z= self.read_signed_16_bit(LSM303D.Regs.OUT_Z_L_M,LSM303D.Regs.OUT_Z_H_M)
         multiplier=self.MAG_SCALE/(2.**15.) 
-        return (x*multiplier,y*multiplier,z*multiplier)
+        return self.read_16_bit_values(LSM303D.Regs.OUT_X_L_M,3,multiplier)
         
-    def read_signed_16_bit(self,arg1,arg2):
-        bytes=struct.pack("BB",self.read(arg1),self.read(arg2))
-        return struct.unpack("<h",bytes)[0]
 
-IMUBase.register_sensor_type(0x1e,LSM303D)
+IMUBase.register_sensor_type(LSM303D)
 
 if __name__=="__main__":
     s=LSM303D()
+    format_acc=":".join(["{:-7.2f}"]*3)
+    format_mag=":".join(["{:-7.2f}"]*3)
     while True:
-        print((s.get_accel(),s.get_magnetometer()))
+        print(format_acc.format(*s.get_accel()),format_mag.format(*s.get_magnetometer()))
         time.sleep(0.01)

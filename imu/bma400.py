@@ -6,8 +6,7 @@ from enum import IntEnum
 if __name__!="__main__":
     from .imubase import *
 else:
-    class IMUBase:
-        pass
+    import imubase
 
 X_AXIS=0
 Y_AXIS=1
@@ -16,6 +15,9 @@ Z_AXIS=2
 import smbus2 as smbus
 
 class BMA400(IMUBase):
+    ADDRESS=0x15
+    ID_REG_VALUE=(0x0,0x90)
+
 
     @staticmethod
     def has_accelerometer():
@@ -24,9 +26,7 @@ class BMA400(IMUBase):
 
     def __init__(self):
         self.is_initialised=False
-        self.regs=BMA400.Regs
 
-    ADDRESS=0x15
 
     class Regs(IntEnum):
         # BMA400 register definitions
@@ -191,6 +191,7 @@ class BMA400(IMUBase):
         NORMAL = 0x02
 
     def _startup(self):
+        self.start_i2c(self.ADDRESS,big_endian=False)
         self.bus=smbus.SMBus(1)
         self.setPoweMode(BMA400.PowerMode.NORMAL)
         self.setFullScaleRange(BMA400.Range.RANGE_4G)
@@ -259,30 +260,13 @@ class BMA400(IMUBase):
         data= data| (filter<<2)
         self.write(BMA400.Regs.BMA400_ACC_CONFIG_2,data)
 
-    def write(self,data, address):
-        self.bus.write_byte_data(BMA400.ADDRESS,address,data)
-
-    def read(self, address):
-        return self.bus.read_byte_data(BMA400.ADDRESS,address)
-
     def get_accel(self):
         """Get accelerometer values (in multiples of g)        
         """
         if not self.is_initialised:
             self._startup()
         multiplier=self.acc_scale/2048 
-        x= self.read_signed_12_bit(BMA400.Regs.BMA400_ACC_X_LSB,BMA400.Regs.BMA400_ACC_X_MSB)*multiplier
-        y= self.read_signed_12_bit(BMA400.Regs.BMA400_ACC_Y_LSB,BMA400.Regs.BMA400_ACC_Y_MSB)*multiplier
-        z= self.read_signed_12_bit(BMA400.Regs.BMA400_ACC_Z_LSB,BMA400.Regs.BMA400_ACC_Z_MSB)*multiplier
-        return (x,y,z)
-
-    def read_signed_12_bit(self,arg1,arg2):
-        value=self.read(arg1) + 256*self.read(arg2)
-        if value>2047:
-            value-=4096
-        return value
-        
-
+        return self.read_signed_12_bit(BMA400.Regs.BMA400_ACC_X_LSB,3,multiplier)
 
 if __name__=="__main__":
     s=BMA400()
@@ -290,4 +274,4 @@ if __name__=="__main__":
         print(s.get_accel())
         time.sleep(0.01)
 else:
-    IMUBase.register_sensor_type(BMA400.ADDRESS,BMA400)
+    IMUBase.register_sensor_type(BMA400)

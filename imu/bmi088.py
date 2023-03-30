@@ -4,12 +4,15 @@ import struct
 import time 
 from enum import IntEnum
 if __name__=="__main__":
-    class IMUBase:
-        pass
+    from imubase import *
 else:
     from .imubase import *
 
 class BMI088(IMUBase):
+    ADDRESS = [0x19,0x69]
+    ID_REG_VALUE=[(0x00,0x1E),(0x00,0x0f)]
+
+
     @staticmethod
     def has_accelerometer():
         return True
@@ -124,13 +127,16 @@ class BMI088(IMUBase):
         ACC_ACTIVE = 0x00
         ACC_SUSPEND = 0x03 
 
+    ADDR_IDX_ACCEL=0
+    ADDR_IDX_GYRO=1
+
     def __init__(self):
         self.initialised=False
 
 
     def _startup(self,):
-        self.bus=smbus.SMBus(1)        
-        self.initialised=True
+        self.start_i2c(big_endian=False)
+        
         self.set_accel_scale_range(BMI088.Regs.RANGE_6G)
         self.set_accel_output_data_rate(BMI088.Regs.ODR_100)
         self.set_accel_power_mode(BMI088.Regs.ACC_ACTIVE)
@@ -138,22 +144,23 @@ class BMI088(IMUBase):
         self.set_gyro_scale_range(BMI088.Regs.RANGE_1000)
         self.set_gyro_output_data_rate(BMI088.Regs.ODR_400_BW_47)
         self.set_gyro_power_mode(BMI088.Regs.GYRO_NORMAL)
+        self.initialised=True
 
     def set_accel_power_mode(self,mode):
         if mode == BMI088.Regs.ACC_ACTIVE:
-            self.bus.write_byte_data(BMI088.Regs.BMI088_ACC_ADDRESS, BMI088.Regs.BMI088_ACC_PWR_CTRl, 0x04)
-            self.bus.write_byte_data(BMI088.Regs.BMI088_ACC_ADDRESS, BMI088.Regs.BMI088_ACC_PWR_CONF, 0x00)
+            self.write( BMI088.Regs.BMI088_ACC_PWR_CTRl, 0x04,address_index=BMI088.ADDR_IDX_ACCEL)
+            self.write( BMI088.Regs.BMI088_ACC_PWR_CONF, 0x00,address_index=BMI088.ADDR_IDX_ACCEL)
         elif mode == BMI088.Regs.ACC_SUSPEND:
-            self.bus.write_byte_data(BMI088.Regs.BMI088_ACC_ADDRESS, BMI088.Regs.BMI088_ACC_PWR_CONF, 0x03)
-            self.bus.write_byte_data(BMI088.Regs.BMI088_ACC_ADDRESS, BMI088.Regs.BMI088_ACC_PWR_CTRl, 0x00)
+            self.write( BMI088.Regs.BMI088_ACC_PWR_CONF, 0x03,address_index=BMI088.ADDR_IDX_ACCEL)
+            self.write( BMI088.Regs.BMI088_ACC_PWR_CTRl, 0x00,address_index=BMI088.ADDR_IDX_ACCEL)
 
     def set_gyro_power_mode(self,mode):
         if mode == BMI088.Regs.GYRO_NORMAL:
-            self.bus.write_byte_data(BMI088.Regs.BMI088_GYRO_ADDRESS, BMI088.Regs.BMI088_GYRO_LPM_1, BMI088.Regs.GYRO_NORMAL)
+            self.write(BMI088.Regs.BMI088_GYRO_LPM_1, BMI088.Regs.GYRO_NORMAL,address_index=BMI088.ADDR_IDX_GYRO)
         elif mode == BMI088.Regs.GYRO_SUSPEND:
-            self.bus.write_byte_data(BMI088.Regs.BMI088_GYRO_ADDRESS, BMI088.Regs.BMI088_GYRO_LPM_1, BMI088.Regs.GYRO_SUSPEND)
+            self.write( BMI088.Regs.BMI088_GYRO_LPM_1, BMI088.Regs.GYRO_SUSPEND,address_index=BMI088.ADDR_IDX_GYRO)
         elif mode == BMI088.Regs.GYRO_DEEP_SUSPEND:
-            self.bus.write_byte_data(BMI088.Regs.BMI088_GYRO_ADDRESS, BMI088.Regs.BMI088_GYRO_LPM_1, BMI088.Regs.GYRO_DEEP_SUSPEND)
+            self.write(BMI088.Regs.BMI088_GYRO_LPM_1, BMI088.Regs.GYRO_DEEP_SUSPEND,address_index=BMI088.ADDR_IDX_GYRO)
 
     def set_accel_scale_range(self,range):
         if range == BMI088.Regs.RANGE_3G:
@@ -164,14 +171,14 @@ class BMI088(IMUBase):
             self._accRange = 12.0
         elif range == BMI088.Regs.RANGE_24G:
             self._accRange = 24.0
-        self.bus.write_byte_data(BMI088.Regs.BMI088_ACC_ADDRESS, BMI088.Regs.BMI088_ACC_RANGE, range)
+        self.write(BMI088.Regs.BMI088_ACC_RANGE, range,address_index=BMI088.ADDR_IDX_ACCEL)
 
     def set_accel_output_data_rate(self,odr):    
-        data = self.bus.read_byte_data(BMI088.Regs.BMI088_ACC_ADDRESS, BMI088.Regs.BMI088_ACC_CONF);
+        data = self.read(BMI088.Regs.BMI088_ACC_CONF,address_index=BMI088.ADDR_IDX_ACCEL);
         data = data & 0xf0;
         data = data | odr;
         
-        self.bus.write_byte_data(BMI088.Regs.BMI088_ACC_ADDRESS, BMI088.Regs.BMI088_ACC_CONF, data)
+        self.write(BMI088.Regs.BMI088_ACC_CONF, data,address_index=BMI088.ADDR_IDX_ACCEL)
 
     def set_gyro_scale_range(self,range):
         if range == BMI088.Regs.RANGE_2000:
@@ -184,39 +191,32 @@ class BMI088(IMUBase):
             self._gyroRange = 250
         elif range == BMI088.Regs.RANGE_125:
             self._gyroRange = 125
-        self.bus.write_byte_data(BMI088.Regs.BMI088_GYRO_ADDRESS, BMI088.Regs.BMI088_GYRO_RANGE, range)
+        self.write(BMI088.Regs.BMI088_GYRO_RANGE, range,address_index=BMI088.ADDR_IDX_GYRO)
 
     def set_gyro_output_data_rate(self,odr):
-        self.bus.write_byte_data(BMI088.Regs.BMI088_GYRO_ADDRESS, BMI088.Regs.BMI088_GYRO_BAND_WIDTH, odr)
+        self.write(BMI088.Regs.BMI088_GYRO_BAND_WIDTH, odr,address_index=BMI088.ADDR_IDX_GYRO)
     
     def get_accel(self):
         """Get accelerometer values (in multiples of g)        
         """
         if not self.initialised:
             self._startup()
-        accData=self.bus.read_i2c_block_data(BMI088.Regs.BMI088_ACC_ADDRESS,BMI088.Regs.BMI088_ACC_X_LSB,6)
-        ax,ay,az=struct.unpack('hhh',struct.pack("BBBBBB",*accData))
-        mult=self._accRange / 32768
-        return (ax*mult,ay*mult,az*mult)
+        return self.read_16_bit_values(BMI088.Regs.BMI088_ACC_X_LSB,3,multiplier=self._accRange / 32768,address_index=BMI088.ADDR_IDX_ACCEL)
 
     def get_gyro(self):
         """Get gyro values (in degrees per second)        
         """
         if not self.initialised:
             self._startup()
-        accData=self.bus.read_i2c_block_data(BMI088.Regs.BMI088_GYRO_ADDRESS,BMI088.Regs.BMI088_GYRO_RATE_X_LSB, 6)
-        ax,ay,az=struct.unpack('hhh',struct.pack("BBBBBB",*accData))
-        mult=self._gyroRange / 32768
-        return (ax*mult,ay*mult,az*mult)
-
+        return self.read_16_bit_values(BMI088.Regs.BMI088_GYRO_RATE_X_LSB,3,multiplier=self._gyroRange / 32768,address_index=BMI088.ADDR_IDX_GYRO)
 
 if __name__=="__main__":
     b=BMI088()
     while True:
-        print(b.get_gyro())
-        #print((b.get_accel(),b.get_gyro()))
+        print("%8.3f,%8.3f,%8.3f"%b.get_gyro())
+        print("%8.3f,%8.3f,%8.3f"%b.get_accel())
         time.sleep(0.01)
 else:
-    IMUBase.register_sensor_type(0x19,BMI088)
+    IMUBase.register_sensor_type(BMI088)
 
 

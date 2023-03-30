@@ -1,11 +1,15 @@
 import smbus2 as smbus
 from math import *
+import struct
 
 class IMUBase:
     imu_classes={}
     @staticmethod
-    def register_sensor_type(i2c_address,sensor_class):
-        IMUBase.imu_classes[i2c_address]=sensor_class
+    def register_sensor_type(sensor_class):
+        if type(sensor_class.ADDRESS)==list:
+            IMUBase.imu_classes[tuple(sensor_class.ADDRESS)]=sensor_class
+        else:
+            IMUBase.imu_classes[sensor_class.ADDRESS]=sensor_class
 
     @staticmethod
     def has_accelerometer():
@@ -23,10 +27,24 @@ class IMUBase:
     def scan_imus():
         imu_list=[]
         bus=smbus.SMBus(1)
-        for addr in IMUBase.imu_classes.keys():            
+        for addr,cls in IMUBase.imu_classes.items():
             try:
-                bus.read_byte(addr)
-                imu_list.append(IMUBase.imu_classes[addr])
+                found_device=False
+                if hasattr(addr, '__iter__'):
+                    for addr,(reg,value) in zip(cls.ADDRESS,cls.ID_REG_VALUE):
+                        if bus.read_byte_data(addr,reg)==value:
+                            found_device=True
+                        else:
+                            print(f"Wrong ID for {cls}")
+                            continue
+                else:
+                    reg,value=cls.ID_REG_VALUE
+                    if bus.read_byte_data(addr,reg)==value:
+                        found_device=True
+                    else:
+                        print(f"Wrong ID for {cls}")
+                if found_device:
+                    imu_list.append(IMUBase.imu_classes[addr])
             except IOError:
                 pass
         return imu_list
@@ -98,4 +116,62 @@ class IMUBase:
         pitch=asin(-matrix[2][1])
         roll=atan2(-matrix[2][0], matrix[2][2])
         return yaw,pitch,roll
+    
+    def start_i2c(self,big_endian):
+        # address can be either a single address or a list of them
+        # for devices with multiple i2c addresses
+        self.bus=smbus.SMBus(1)
+        if type(self.ADDRESS)==int:
+            self.address=[self.ADDRESS]
+        else:
+            self.address=self.ADDRESS
+        self.big_endian=big_endian
+
+    def write(self,register,data,*,address_index=0):
+        self.bus.write_byte_data(self.address[address_index],register,data)
         
+    def read(self,register,*,address_index=0):
+        return self.bus.read_byte_data(self.address[address_index],register)
+    
+    def read_byte_values(self,register,count,*,address_index=0):
+        return self.bus.read_i2c_block_data(self.address[address_index],register,count)
+    
+    def read_16_bit_values(self,register,count,multiplier,*,address_index=0):
+#        raw_data=bytearray(self.bus.read_i2c_block_data(self.address[address_index],register,count*2))
+        raw_data=bytearray([self.read(a) for a in range(register,register+count*2)])
+        format_str="h"*count
+        if self.big_endian:
+            format_str=">"+format_str
+        else:
+            format_str="<"+format_str
+        retval=struct.unpack(format_str,raw_data)
+        if type(multiplier)==float or type(multiplier)==int:
+            return tuple([x * multiplier for x in retval])
+        elif hasattr(multiplier, '__iter__'):
+            return tuple([x * mult  for x,mult in zip(retval,multiplier)])
+        elif multiplier==None:
+            return retval
+        else:
+            raise RuntimeError(f"Bad multiplier:{multiplier}")
+
+    def read_12_bit_values(self,register,count,multiplier,*,address_index=0):
+        raw_data=bytearray(self.bus.read_i2c_block_data(self.address[address_index],register,count*2))
+        format_str="H"*count
+        if self.big_endian:
+            format_str=">"+format_str
+        else:
+            format_str="<"+format_str            
+        retval=struct.unpack(format_str,raw_data)
+        retval=[x if x<2048 else x-4096 for x in retval]
+        if type(multiplier)==float or type(multiplier)==int:
+            return tuple([x * multiplier for x in retval])
+        elif hasattr(multiplier, '__iter__'):
+            return tuple([x * mult  for x,mult in zip(retval,multiplier)])
+        elif multiplier==None:
+            return retval
+        else:
+            raise RuntimeError(f"Bad multiplier:{multiplier}")
+            
+
+
+
