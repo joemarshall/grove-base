@@ -191,7 +191,7 @@ class BMA400(IMUBase):
         NORMAL = 0x02
 
     def _startup(self):
-        self.start_i2c(self.ADDRESS,big_endian=False)
+        self.start_i2c(big_endian=False)
         self.bus=smbus.SMBus(1)
         self.setPoweMode(BMA400.PowerMode.NORMAL)
         self.setFullScaleRange(BMA400.Range.RANGE_4G)
