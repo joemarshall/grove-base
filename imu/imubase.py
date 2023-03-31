@@ -31,8 +31,8 @@ class IMUBase:
             try:
                 found_device=False
                 if hasattr(addr, '__iter__'):
-                    for addr,(reg,value) in zip(cls.ADDRESS,cls.ID_REG_VALUE):
-                        if bus.read_byte_data(addr,reg)==value:
+                    for subaddr,(reg,value) in zip(cls.ADDRESS,cls.ID_REG_VALUE):
+                        if bus.read_byte_data(subaddr,reg)==value:
                             found_device=True
                         else:
                             print(f"Wrong ID for {cls}")
