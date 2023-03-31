@@ -266,7 +266,7 @@ class BMA400(IMUBase):
         if not self.is_initialised:
             self._startup()
         multiplier=self.acc_scale/2048 
-        return self.read_signed_12_bit(BMA400.Regs.BMA400_ACC_X_LSB,3,multiplier)
+        return self.read_12_bit_values(BMA400.Regs.BMA400_ACC_X_LSB,3,multiplier)
 
 if __name__=="__main__":
     s=BMA400()
