@@ -138,7 +138,7 @@ class IMUBase:
     
     def read_16_bit_values(self,register,count,multiplier,*,address_index=0):
 #        raw_data=bytearray(self.bus.read_i2c_block_data(self.address[address_index],register,count*2))
-        raw_data=bytearray([self.read(a) for a in range(register,register+count*2)])
+        raw_data=bytearray([self.read(a,address_index=address_index) for a in range(register,register+count*2)])
         format_str="h"*count
         if self.big_endian:
             format_str=">"+format_str
