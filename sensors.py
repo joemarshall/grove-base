@@ -114,12 +114,44 @@ class DHTSensor:
         return grovepi.dht(self.pin,0)        
 
 class UltrasonicSensor:
+    """ Ultrasonic sensor
+
+    This sensor detects the distance to the nearest object in front of its beam. Because this is done
+    with ultrasonic pulses, the time to get a sample from this sensor is equal to roughly the time sound
+    takes to travel to and from the object. The maximum read distance is about 5 metres, which means that
+    a call to get_level can take up to 50-100ms to run, during which your code stalls.
+
+    If you want to dice with danger, this code also supports the begin_read and end_read methods. begin_read
+    sends out a pulse on the sensor. end_read checks if the response has come back yet, and returns None if 
+    it hasn't, or the value otherwise. In between calls to begin_read and end_read, your code can do anything 
+    *except* read from other sensors connected to the digital or analog pins on the grovepi board. Note, this 
+    means it is okay to read from sensors connected to the i2c ports, such as the accelerometer, gyro, 
+    magnetometer boards etc.
+
+    """
     def __init__(self,pin):
         self.pin=pin
 
     def get_level(self):
         return grovepi.ultrasonicRead(self.pin)        
+    
+    def begin_read(self):
+        """ Begin an ultrasonic read. Until you call the matching end_read, *DO NOT* get values from
+        any other sensors attached to the digital or analog pins of grovepi, or else *BAD THINGS* will
+        happen. There is *NO SAFETY CODE* stopping you doing bad things here. You may read accelerometers,
+        gyroscopes etc. to your hearts content though. This lets you combine ultrasonic pulses with high
+        speed accelerometer readings. """
+        grovepi.ultrasonicReadBegin(self.pin)
 
+    def end_read(self):
+        """ Get the value of an ultrasonic read. Only call this after a begin_read call. If there is no
+        response yet, it will return None, otherwise it returns the distance in centimetres where the ultrasonic
+        pulse bounced off an object. This always returns immediately and does not delay. """
+        value = grovepi.ultrasonicReadFinish(self.pin)
+        if value>=0:
+            return value
+        else:
+            return None
 
 
 class AccelSensor:
