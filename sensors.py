@@ -143,6 +143,7 @@ class AnalogPinSensor:
         self.pin=pin
 
     def get_level(self):
+        """ return the level of this analog pin (from 0 to 1023)"""
         return grovepi.analogRead(self.pin)
 
 class DigitalPinSensor:
@@ -150,6 +151,7 @@ class DigitalPinSensor:
         self.pin=pin
 
     def get_level(self):
+        """ return the level of this digital pin (0 or 1)"""
         return grovepi.digitalRead(self.pin)        
 
 class DHTSensor:
@@ -157,6 +159,7 @@ class DHTSensor:
         self.pin=pin
 
     def get_level(self):
+        """ return the temperature (in C) and humidity as a tuple"""
         return grovepi.dht(self.pin,0)        
 
 class UltrasonicSensor:
@@ -179,6 +182,7 @@ class UltrasonicSensor:
         self.pin=pin
 
     def get_level(self):
+        """ Return the sensed distance in centimetres """
         return grovepi.ultrasonicRead(self.pin)        
     
     def begin_read(self):
