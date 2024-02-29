@@ -101,12 +101,15 @@ def delay_sample_time(delay):
     if _LAST_SAMPLE_TIME is not None:
         if _LAST_SAMPLE_TIME + delay > curtime:
             _LAST_SAMPLE_TIME += delay
-            time.sleep((_LAST_SAMPLE_TIME+delay)-curtime)
+            time.sleep(_LAST_SAMPLE_TIME-curtime)
+            return
         else:
             if not _SHOWN_DELAY_WARNING:
                 print(f"Warning, can't sample fast enough for delay {delay}")
                 _SHOWN_DELAY_WARNING = True
-            _LAST_SAMPLE_TIME = curtime
+    _LAST_SAMPLE_TIME = time.time()
+
+
 
 
 def _does_i2c_device_exist(addr):
