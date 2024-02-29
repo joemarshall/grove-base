@@ -1,4 +1,5 @@
-""" This module allows you to draw basic line graphs on the LCD screen
+""" This module allows you to draw basic line graphs on the LCD screen, or on the web graph
+if you are running inside websensors.
 """
 
 import grovelcd

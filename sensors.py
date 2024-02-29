@@ -17,6 +17,30 @@ def __getattr__(name):
     return globals()[name]
 
 def set_pins(sensor_pin_mapping:dict):
+    """Set the mapping between grove board pins and sensor objects. On the web sensor platform this does nothing.
+
+    Call this with a mapping like:
+    { 
+        "ultrasonic":3, # ultrasonic sensor on digital pin 3
+        "gyro":0, # gyroscope on i2c port
+        "sound":1 # sound sensor on analog pin 1
+    }
+
+    If you have two of any sensor, then you can add a number to the end of the name, like
+    "ultrasonic1":4 # ultrasonic sensor 1 on digital pin 4
+
+    Once this is called, sensor objects will be available as e.g. sensors.ultrasonic, sensors.gyro. For 
+    multiple of the same sensor, you can access them by the full name as e.g. sensors.ultrasonic1
+
+    Args:
+        sensor_pin_mapping (dict): Dict mapping from sensor name to pin. Sensor names are:
+            "light,temperature_analog,sound,rotary_angle" - sensors connected to an analog pin
+            "gyro,accel,magnetometer,nfc" - sensors connected to an i2c port
+            "pir,button,touch,dht,ultrasonic" - sensors connected to a digital port.
+
+    Raises:
+        RuntimeError: Raised if an unknown sensor type is used.
+    """
     _PIN_MAP=sensor_pin_mapping
     # pin indices is used to record all the sensor numbers given to things
     # this is so that if multiple different IMUs are attached,
