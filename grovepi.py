@@ -269,7 +269,7 @@ def ultrasonicReadBegin(pin):
 def ultrasonicReadFinish(pin):
     """ Finish reading value from Grove Ultrasonic sensor - you can't do other grovepi things between ultrasonicReadBegin and ultrasonicReadFinish, but you can read accelerometer, nfc etc. Returns -1 if not ready """
     number = read_i2c_block(3) 
-    if number[0]==uRead_cmd:
+    if number[0:1]==uRead_cmd:
         return (number[1]*256+number[2])
     else:
         return -1
