@@ -65,6 +65,25 @@ def set_pins(sensor_pin_mapping:dict):
         if new_sensor!=None:
             globals()[sensorFullname]=new_sensor
 
+_LAST_SAMPLE_TIME=None
+_SHOWN_DELAY_WARNING=False
+def delay_sample_time(delay):
+    """ Sleep until *delay* seconds after the last time this was called. 
+        This allows you to steadily sample at a given rate even if sampling
+        from your sensors takes some time.
+    """
+    global _LAST_SAMPLE_TIME,_SHOWN_DELAY_WARNING
+    curtime=time.time()
+    if _LAST_SAMPLE_TIME is not None:
+        if _LAST_SAMPLE_TIME + delay > curtime:
+            _LAST_SAMPLE_TIME += delay
+            time.sleep((_LAST_SAMPLE_TIME+delay)-curtime)
+        else:
+            if not _SHOWN_DELAY_WARNING:
+                print(f"Warning, can't sample fast enough for delay {delay}")
+                _SHOWN_DELAY_WARNING = True
+            _LAST_SAMPLE_TIME = curtime
+
 
 def _does_i2c_device_exist(addr):
     retVal=False
