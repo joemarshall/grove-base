@@ -8,6 +8,7 @@ import imu
 import smbus2 as smbus
 from contextlib import contextmanager
 import re
+import time
 
 
 
@@ -101,12 +102,15 @@ def delay_sample_time(delay):
     if _LAST_SAMPLE_TIME is not None:
         if _LAST_SAMPLE_TIME + delay > curtime:
             _LAST_SAMPLE_TIME += delay
-            time.sleep((_LAST_SAMPLE_TIME+delay)-curtime)
+            time.sleep(_LAST_SAMPLE_TIME-curtime)
+            return
         else:
             if not _SHOWN_DELAY_WARNING:
                 print(f"Warning, can't sample fast enough for delay {delay}")
                 _SHOWN_DELAY_WARNING = True
-            _LAST_SAMPLE_TIME = curtime
+    _LAST_SAMPLE_TIME = time.time()
+
+
 
 
 def _does_i2c_device_exist(addr):
@@ -140,6 +144,7 @@ class AnalogPinSensor:
         self.pin=pin
 
     def get_level(self):
+        """ return the level of this analog pin (from 0 to 1023)"""
         return grovepi.analogRead(self.pin)
 
 class DigitalPinSensor:
@@ -147,6 +152,7 @@ class DigitalPinSensor:
         self.pin=pin
 
     def get_level(self):
+        """ return the level of this digital pin (0 or 1)"""
         return grovepi.digitalRead(self.pin)        
 
 class DHTSensor:
@@ -154,6 +160,7 @@ class DHTSensor:
         self.pin=pin
 
     def get_level(self):
+        """ return the temperature (in C) and humidity as a tuple"""
         return grovepi.dht(self.pin,0)        
 
 class UltrasonicSensor:
@@ -176,6 +183,7 @@ class UltrasonicSensor:
         self.pin=pin
 
     def get_level(self):
+        """ Return the sensed distance in centimetres """
         return grovepi.ultrasonicRead(self.pin)        
     
     def begin_read(self):
