@@ -78,7 +78,7 @@ def set_pins(sensor_pin_mapping:dict):
             new_sensor=MagnetometerSensor(pin_indices[sensorName].index(sensorNum))
         elif sensorName=="dht":
             new_sensor=DHTSensor(pin)
-        elif sensorName=="pir" or sensorName=="button" or sensorName=="touch":
+        elif sensorName=="pir" or sensorName=="button" or sensorName=="touch" or sensorName=="tilt":
             new_sensor=DigitalPinSensor(pin)
         elif sensorName=="ultrasonic":
             new_sensor=UltrasonicSensor(pin)
