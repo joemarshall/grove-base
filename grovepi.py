@@ -155,7 +155,7 @@ def digitalRead(pin):
         resetBus(-1)
     write_i2c_block(dRead_cmd + [pin, unused, unused])    
     if gpVersion<[1,4,0]:
-        data= bus.read_byte(address)
+        data= read_i2c_byte()
     else:
         data = read_identified_i2c_block( dRead_cmd, no_bytes = 1)[0]
     return data
