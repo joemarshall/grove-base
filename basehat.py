@@ -84,7 +84,7 @@ _TIMEOUT1 = 1000
 _TIMEOUT2 = 10000
 _ULTRASONIC_TIMEOUT_NS_PER_COUNT=None
 
-_ULTRASONIC_READ_EXECUTOR=ThreadPoolExecutor ()
+_SENSOR_BACKGROUND_EXECUTOR=ThreadPoolExecutor ()
 
 # ultrasonic read via raspberry pi GPIO
 def ultrasonicRead(pin):
@@ -121,24 +121,86 @@ def _ultrasound_thread(pin):
     else:
         _ULTRASONIC_TIMEOUT_NS_PER_COUNT=(ns_per_count[0]*0.1 + _ULTRASONIC_TIMEOUT_NS_PER_COUNT[0]*0.9,ns_per_count[1]*0.1 + _ULTRASONIC_TIMEOUT_NS_PER_COUNT[1]*0.9)
     return (t2,t3)
+    
+def _dht_thread(pin):
+    time.sleep(0.1)
+    t1=time.monotonic_ns()
+    RPi.GPIO.setup(pin,RPi.GPIO.OUT)
+    RPi.GPIO.output(pin,1)
+    time.sleep(0.05) 
+    RPi.GPIO.output(pin,0)
+    time.sleep(0.02) 
+    RPi.GPIO.setup(pin,RPi.GPIO.IN, RPi.GPIO.PUD_UP)
+    pulse_vals=[0]*500
+    lastval=1 # looking for pull down first
+    curcount=0
+    for c in range(500):
+        pulse_vals[c]=RPi.GPIO.input(pin)
+    print(pulse_vals,len(pulse_vals))
+    found_first_pd=False
+    found_first_pu=False
+    cur_len=0
+    in_pu=False
+    pullup_lengths=[]
+    for x in pulse_vals:
+        if found_first_pd==False:
+            if x==0:
+                found_first_pd=True
+        elif found_first_pu==False:
+            if x==1:
+                found_first_pu=True
+                in_pu=True
+        elif in_pu==False and x==1:
+            cur_len=0
+            in_pu=True
+        elif in_pu==True:
+            cur_len+=1
+            if x==0:
+               pullup_lengths.append(cur_len)
+               in_pu=False
+            
+        
+#    pullup_lengths = [pulse_counts[x*2+2] for x in range(len(pulse_counts)//2-1)]
+    print(pullup_lengths,len(pullup_lengths))    
+    if len(pullup_lengths)>0:
+        max_length = max(pullup_lengths)
+        min_length = min(pullup_lengths)
+        cutoff = (max_length+min_length)//2
+        print("Cutoff: ",cutoff)
+        bits = [x>=cutoff for x in pullup_lengths]
+        bits=bits[1:]
+        out_bytes=[]
+        cur_byte=0
+        for c,b in enumerate(bits):
+            cur_byte<<=1
+            if b:
+                cur_byte|=1
+            if (c&0x7)==0x7:
+                out_bytes.append(cur_byte)
+                cur_byte=0
+        checksum=sum(out_bytes[0:4])&0xff
+        print(bits,len(bits),out_bytes,checksum)
+    
 
 def ultrasonicReadAdjustTimeouts(pin,distanceMax=150):
-    global _TIMEOUT2
+    global _TIMEOUT2,_ULTRASONIC_TIMEOUT_NS_PER_COUNT
     if _ULTRASONIC_TIMEOUT_NS_PER_COUNT==None:
         for c in range(10):
             ultrasonicRead(pin)
-    _TIMEOUT2 = distanceMax*29*2000*_ULTRASONIC_TIMEOUT_NS_PER_COUNT[1]
+    if _ULTRASONIC_TIMEOUT_NS_PER_COUNT!=None:
+        _TIMEOUT2 = distanceMax*29*2000*_ULTRASONIC_TIMEOUT_NS_PER_COUNT[1]
 
 # ultrasonic read via raspberry pi GPIO
 def ultrasonicReadBegin(pin):
-    global _ULTRASONIC_READS,_ULTRASONIC_READ_EXECUTOR
+    global _ULTRASONIC_READS,_SENSOR_BACKGROUND_EXECUTOR
     if pin not in DIGITAL_PINS:
         raise BadPinException(f"Grove base doesn't support digital pin {pin}")
     if pin in _ULTRASONIC_READS and not _ULTRASONIC_READS[pin].done():
         _ULTRASONIC_READS[pin].cancel()
-    _ULTRASONIC_READS[pin]=_ULTRASONIC_READ_EXECUTOR.submit(_ultrasound_thread,pin)
+    _ULTRASONIC_READS[pin]=_SENSOR_BACKGROUND_EXECUTOR.submit(_ultrasound_thread,pin)
     
-
+#def dhtBegin(pin):
+#    global _DHTS,_SENSOR_BACKGROUND_EXECUTOR
 
 def ultrasonicReadFinish(pin):
     global _ULTRASONIC_READS
@@ -156,10 +218,13 @@ def ultrasonicReadFinish(pin):
         return distance
         
 
-def dht(pin,version):
+def dht(pin,version=12):
     if pin not in DIGITAL_PINS:
         raise BadPinException(f"Grove base doesn't support DHT on pin {pin}")
-    raise RuntimeError("DHT not implemented yet")
+    return _dht_thread(pin)
+#    task = _SENSOR_BACKGROUND_EXECUTOR.submit(_dht_thread,pin)
+#    return task.result()
+#    raise RuntimeError("DHT not implemented yet")
 
 def version():
     return "1.4.4"
@@ -168,13 +233,15 @@ if __name__=="__main__":
     import time
     print(f"Board type: {SHIELD_TYPE} ADC:{ADC_ADDRESS}")
     ot=0
+    ultrasonicReadAdjustTimeouts(5,150)    
     while True:
         t=time.monotonic()
 #        time.sleep(1)
  #       print("DR16:",digitalRead(16))
  #       print("AR0:",analogRead(0))
+
         print("UR5:",ultrasonicRead(5),t-ot)
+        print("DHT22",dht(22))
 #        print(_ULTRASONIC_TIMEOUT_NS_PER_COUNT)
         ot=t
-        ultrasonicReadAdjustTimeouts(5,150)
-        time.sleep(.00001)
+        time.sleep(.5)
