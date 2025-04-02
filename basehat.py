@@ -1,14 +1,13 @@
 # support for the same grovepi interface on the grove HAT
 # (updated seed studio shield for PI + pi zero)
 
-import RPi.GPIO
 import time
 import threading
 
 from concurrent.futures import ThreadPoolExecutor
-
-RPi.GPIO.setwarnings(False)
-RPi.GPIO.setmode(RPi.GPIO.BCM)
+from gpiodirect import FastDHT11
+import gpiod
+from gpiod.line import Direction,Value,Bias,Edge
 
 DIGITAL_PINS={5,16,18,22,24,26}
 DIGITAL_PIN_DIRECTIONS={}
@@ -24,29 +23,28 @@ SHIELD_TYPE_PIZERO_HAT=0x05
 SHIELD_TYPE_PI_HAT=0x04
 
 SHIELD_TYPE = 0
-ADC_ADDRESS= 0x04
+ADC_ADDRESS= 0x08
 
 def _read_shield_type():
     global SHIELD_TYPE,ADC_ADDRESS
     shield_type=0
     try:
-        shield_type = bus.read_word_data(0x04, 0)
+        shield_type = bus.read_word_data(0x08, 0)
     except IOError:
         shield_type=0
     if shield_type not in [SHIELD_TYPE_PIZERO_HAT,SHIELD_TYPE_PI_HAT]:
         try:
-            shield_type = bus.read_word_data(0x08,0)
+            shield_type = bus.read_word_data(0x04,0)
             if shield_type  in [SHIELD_TYPE_PIZERO_HAT,SHIELD_TYPE_PI_HAT]:
-                ADC_ADDRESS=0x08
+                ADC_ADDRESS=0x04
             else:
                 shield_type=0
         except IOError:
             shield_type=0  
-    SHIELD_TYPE=shield_type        
+    SHIELD_TYPE=shield_type
     return shield_type
 
 _read_shield_type()
-
 # analog read via the onboard ADC
 def analogRead(pin):
     if pin not in ANALOG_PINS:
@@ -57,174 +55,96 @@ def analogRead(pin):
 def digitalRead(pin):
     if pin not in DIGITAL_PINS:
         raise BadPinException(f"Grove base doesn't support digital read on pin {pin}")
-    pinMode(pin,"INPUT")
-    return RPi.GPIO.input(pin)
+    with gpiod.request_lines("/dev/gpiochip4",
+        config={
+            pin: gpiod.LineSettings(
+                direction=Direction.INPUT
+            )
+        },
+    ) as req:
+        return 1 if req.get_value(pin) == gpiod.line.Value.ACTIVE else 0
 
 # digital write via raspberry pi GPIO
 def digitalWrite(pin,output):
     if pin not in DIGITAL_PINS:
         raise BadPinException(f"Grove base doesn't support digital write on pin {pin}")
-    pinMode(pin,"OUTPUT")
-    RPi.GPIO.output(pin, output)
-
+    with gpiod.request_lines("/dev/gpiochip4",
+        config={
+            pin: gpiod.LineSettings(
+                direction=Direction.OUTPUT,
+                output_value=Value.ACTIVE
+            )
+        },
+    ) as req:
+        pass
 
 # set pin mode of digital pin only
 def pinMode(pin,mode):
     if pin not in DIGITAL_PINS:
         raise BadPinException(f"Grove base doesn't support digital pin {pin}")
-    newMode = RPi.GPIO.IN
     if mode.lower()=="OUTPUT":
-        newMode=RPi.GPIO.OUT
-    if pin not in DIGITAL_PIN_DIRECTIONS or DIGITAL_PIN_DIRECTIONS[pin]!=newMode:
-        RPi.GPIO.setup(pin, newMode)
+        digitalWrite(pin,0)
+    else:
+        digitalRead(pin)
 
-_ULTRASONIC_READS={}
-_ULTRASONIC_FINISHED_EVENT = threading.Event()
-_TIMEOUT1 = 1000
-_TIMEOUT2 = 10000
-_ULTRASONIC_TIMEOUT_NS_PER_COUNT=None
-
-_SENSOR_BACKGROUND_EXECUTOR=ThreadPoolExecutor ()
+_ULTRASOUND_MAX_TIME=0.2
+_ULTRASOUND_MAX_DISTANCE=500
+_ULTRASOUND_MAX_VALUE=500
 
 # ultrasonic read via raspberry pi GPIO
-def ultrasonicRead(pin):
+def ultrasonicRead(pin,fp_distance=False):
+    distance=_ULTRASOUND_MAX_VALUE
     if pin not in DIGITAL_PINS:
         raise BadPinException(f"Grove base doesn't support digital pin {pin}")
-    ultrasonicReadBegin(pin)
-    return ultrasonicReadFinish(pin)
+    chip = gpiod.Chip("/dev/gpiochip4")
+    with chip.request_lines(
+        config={
+                pin: gpiod.LineSettings(
+                    direction=Direction.OUTPUT, output_value=Value.INACTIVE
+                )
+            },
+        event_buffer_size=4,
+            consumer="us",
+        ) as req:
+            chip.watch_line_info(pin)
+            time.sleep(0.000002) #2us
+            req.set_value(pin,Value.ACTIVE)
+            time.sleep(0.000005) #5us
+#            req.set_value(pin,Value.INACTIVE)
+            req.reconfigure_lines({pin:gpiod.LineSettings(
+                    direction=Direction.INPUT,bias=Bias.PULL_DOWN,edge_detection=Edge.FALLING)})
+            events=[]
+            if req.wait_edge_events(_ULTRASOUND_MAX_TIME):
+                events=req.read_edge_events()
+                if chip.wait_info_event(0):
+                    transition_time = chip.read_info_event().timestamp_ns
+                    event_time = events[0].timestamp_ns
+                    dt=(event_time-transition_time)
+                    if fp_distance:
+                        distance = (dt   / 29 / 2000)
+                    else:
+                        distance = int(dt   / 29 // 2000)
 
-def _ultrasound_thread(pin):
-    global _ULTRASONIC_TIMEOUT_NS_PER_COUNT
-    t1=time.monotonic_ns()
-    RPi.GPIO.setup(pin,RPi.GPIO.OUT)
-    RPi.GPIO.output(pin,0)
-    time.sleep(0.000002) #2us
-    RPi.GPIO.output(pin,1)
-    time.sleep(0.0001) #10us
-    RPi.GPIO.output(pin,0)
-    RPi.GPIO.setup(pin,RPi.GPIO.IN)   
-    count1 = 0
-    while count1 < _TIMEOUT1 and RPi.GPIO.input(pin)==0:
-        count1 += 1
-    if count1 >= _TIMEOUT1:
-        return (None,1)
-    t2=time.monotonic_ns()
-    count2=0
-    while count2 < _TIMEOUT2 and RPi.GPIO.input(pin)==1:
-        count2 += 1
-    if count2 >= _TIMEOUT2:
-        return (None,2)
-    t3=time.monotonic_ns()
-    ns_per_count=((count1/(t2-t1)),(count2/(t3-t2)))
-    if _ULTRASONIC_TIMEOUT_NS_PER_COUNT==None:
-        _ULTRASONIC_TIMEOUT_NS_PER_COUNT=ns_per_count
-    else:
-        _ULTRASONIC_TIMEOUT_NS_PER_COUNT=(ns_per_count[0]*0.1 + _ULTRASONIC_TIMEOUT_NS_PER_COUNT[0]*0.9,ns_per_count[1]*0.1 + _ULTRASONIC_TIMEOUT_NS_PER_COUNT[1]*0.9)
-    return (t2,t3)
+            chip.unwatch_line_info(pin)
+    if distance>_ULTRASOUND_MAX_DISTANCE:
+        distance=_ULTRASOUND_MAX_VALUE
+    return distance
     
-def _dht_thread(pin):
-    time.sleep(0.1)
-    t1=time.monotonic_ns()
-    RPi.GPIO.setup(pin,RPi.GPIO.OUT)
-    RPi.GPIO.output(pin,1)
-    time.sleep(0.05) 
-    RPi.GPIO.output(pin,0)
-    time.sleep(0.02) 
-    RPi.GPIO.setup(pin,RPi.GPIO.IN, RPi.GPIO.PUD_UP)
-    pulse_vals=[0]*500
-    lastval=1 # looking for pull down first
-    curcount=0
-    for c in range(500):
-        pulse_vals[c]=RPi.GPIO.input(pin)
-    print(pulse_vals,len(pulse_vals))
-    found_first_pd=False
-    found_first_pu=False
-    cur_len=0
-    in_pu=False
-    pullup_lengths=[]
-    for x in pulse_vals:
-        if found_first_pd==False:
-            if x==0:
-                found_first_pd=True
-        elif found_first_pu==False:
-            if x==1:
-                found_first_pu=True
-                in_pu=True
-        elif in_pu==False and x==1:
-            cur_len=0
-            in_pu=True
-        elif in_pu==True:
-            cur_len+=1
-            if x==0:
-               pullup_lengths.append(cur_len)
-               in_pu=False
-            
-        
-#    pullup_lengths = [pulse_counts[x*2+2] for x in range(len(pulse_counts)//2-1)]
-    print(pullup_lengths,len(pullup_lengths))    
-    if len(pullup_lengths)>0:
-        max_length = max(pullup_lengths)
-        min_length = min(pullup_lengths)
-        cutoff = (max_length+min_length)//2
-        print("Cutoff: ",cutoff)
-        bits = [x>=cutoff for x in pullup_lengths]
-        bits=bits[1:]
-        out_bytes=[]
-        cur_byte=0
-        for c,b in enumerate(bits):
-            cur_byte<<=1
-            if b:
-                cur_byte|=1
-            if (c&0x7)==0x7:
-                out_bytes.append(cur_byte)
-                cur_byte=0
-        checksum=sum(out_bytes[0:4])&0xff
-        print(bits,len(bits),out_bytes,checksum)
-    
+def ultrasonicReadSetMaxDistance(distanceMax=150,maxOutputValue=500):
+    global _ULTRASOUND_MAX_TIME,_ULTRASOUND_MAX_DISTANCE,_ULTRASOUND_MAX_VALUE
+    _ULTRASOUND_MAX_TIME=(1.5*distanceMax * 29 *2000)*1e-9
+    _ULTRASOUND_MAX_DISTANCE=distanceMax
+    _ULTRASOUND_MAX_VALUE=maxOutputValue
 
-def ultrasonicReadAdjustTimeouts(pin,distanceMax=150):
-    global _TIMEOUT2,_ULTRASONIC_TIMEOUT_NS_PER_COUNT
-    if _ULTRASONIC_TIMEOUT_NS_PER_COUNT==None:
-        for c in range(10):
-            ultrasonicRead(pin)
-    if _ULTRASONIC_TIMEOUT_NS_PER_COUNT!=None:
-        _TIMEOUT2 = distanceMax*29*2000*_ULTRASONIC_TIMEOUT_NS_PER_COUNT[1]
-
-# ultrasonic read via raspberry pi GPIO
-def ultrasonicReadBegin(pin):
-    global _ULTRASONIC_READS,_SENSOR_BACKGROUND_EXECUTOR
-    if pin not in DIGITAL_PINS:
-        raise BadPinException(f"Grove base doesn't support digital pin {pin}")
-    if pin in _ULTRASONIC_READS and not _ULTRASONIC_READS[pin].done():
-        _ULTRASONIC_READS[pin].cancel()
-    _ULTRASONIC_READS[pin]=_SENSOR_BACKGROUND_EXECUTOR.submit(_ultrasound_thread,pin)
-    
-#def dhtBegin(pin):
-#    global _DHTS,_SENSOR_BACKGROUND_EXECUTOR
-
-def ultrasonicReadFinish(pin):
-    global _ULTRASONIC_READS
-    if pin not in DIGITAL_PINS:
-        raise BadPinException(f"Grove base doesn't support digital pin {pin}")
-    if pin not in _ULTRASONIC_READS:
-        raise BadPinException(f"Ultrasonic read finish without begin")
-    t1,t2=_ULTRASONIC_READS[pin].result()
-    if t1==None:
-        return 600
-    else:
-        dt = int((t2 - t1) )
-
-        distance = int((t2 - t1)   / 29 // 2000)
-        return distance
-        
+dht_handler = None
 
 def dht(pin,version=12):
+    global dht_handler
     if pin not in DIGITAL_PINS:
         raise BadPinException(f"Grove base doesn't support DHT on pin {pin}")
-    return _dht_thread(pin)
-#    task = _SENSOR_BACKGROUND_EXECUTOR.submit(_dht_thread,pin)
-#    return task.result()
-#    raise RuntimeError("DHT not implemented yet")
+    if dht_handler==None:
+        dht_handler=FastDHT11()
+    return dht_handler.read(pin)
 
 def version():
     return "1.4.4"
@@ -233,15 +153,15 @@ if __name__=="__main__":
     import time
     print(f"Board type: {SHIELD_TYPE} ADC:{ADC_ADDRESS}")
     ot=0
-    ultrasonicReadAdjustTimeouts(5,150)    
+    ultrasonicReadSetMaxDistance(15)    
     while True:
-        t=time.monotonic()
 #        time.sleep(1)
  #       print("DR16:",digitalRead(16))
  #       print("AR0:",analogRead(0))
 
-        print("UR5:",ultrasonicRead(5),t-ot)
-        print("DHT22",dht(22))
+        t=time.monotonic()
+        print("UR16:",ultrasonicRead(16,fp_distance=True),time.monotonic()-t)
+ #       print("DHT5",dht(5))
 #        print(_ULTRASONIC_TIMEOUT_NS_PER_COUNT)
         ot=t
-        time.sleep(.5)
+#        time.sleep(.5)
