@@ -172,6 +172,3 @@ class IMUBase:
         else:
             raise RuntimeError(f"Bad multiplier:{multiplier}")
             
-
-
-

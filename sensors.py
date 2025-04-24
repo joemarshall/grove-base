@@ -281,7 +281,7 @@ class MagnetometerSensor:
         z: float
             z axis magnetic field strength
         """
-        return self.imu_class.get_accel()
+        return self.imu_class.get_magnetometer()
         
     def get_magnitude(self):
         """ Get the magnitude of magnetic field strength
