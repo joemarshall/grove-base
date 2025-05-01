@@ -1,4 +1,3 @@
-
 """ Reads NFC tags from the Grove NFC module, connected to RPISER on a grove shield
 
     example usage:
@@ -27,7 +26,7 @@ if USE_NFCPY:
 
 
 
-    def waitForTag(timeout):
+    def wait_for_tag(timeout):
       """ Wait for an NFC tag (e.g. a university card) and return the
           ID of the tag.
 
@@ -49,21 +48,25 @@ if USE_NFCPY:
       return id
       
 
-    def isTimeOut():
+    def is_time_out():
       global _nextTimeout
       if time.time()>_nextTimeout:
         return True
       return False
 
+    waitForTag = wait_for_tag
+    isTimeOut = is_time_out
+
 else:
     import pn532
     
-    def waitForTag(timeout):
+    def wait_for_tag(timeout):
         reader=pn532.PN532()
         reader.begin()
         reader.SAM_configuration()
         return reader.read_passive_target(timeout_sec=timeout)
       
+    waitForTag = wait_for_tag
       
 if __name__=="__main__":
   print(waitForTag(200))

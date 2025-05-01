@@ -193,11 +193,11 @@ class BMA400(IMUBase):
     def _startup(self):
         self.start_i2c(big_endian=False)
         self.bus=smbus.SMBus(1)
-        self.setPoweMode(BMA400.PowerMode.NORMAL)
-        self.setFullScaleRange(BMA400.Range.RANGE_4G)
-        self.setOutputDataRate(BMA400.DataRate.ODR_100)
-        self.setOSR(BMA400.OversamplingRate.OSR_LOWEST)
-        self.setFilter(BMA400.FilterType.ACC_FILT1)
+        self.set_power_mode(BMA400.PowerMode.NORMAL)
+        self.set_full_scale_range(BMA400.Range.RANGE_4G)
+        self.set_output_data_rate(BMA400.DataRate.ODR_100)
+        self.set_osr(BMA400.OversamplingRate.OSR_LOWEST)
+        self.set_filter(BMA400.FilterType.ACC_FILT1)
         # the following is interrupt stuff - I don't think it
         # is needed unless you're using interrupt pin
 #        self.enableGen1()
@@ -206,23 +206,31 @@ class BMA400(IMUBase):
 #        self.setLatch()
         self.is_initialised=True
 
-    def setLatch(self):
-        data=self.read(BMA400.Regs.BMA400_INT_CONFIG_1)
-        data=data&0b01111111
-        data=data|0x80
+    def set_latch(self):
+        """ set interrupt latch """
+        data = self.read(BMA400.Regs.BMA400_INT_CONFIG_1)
+        data = data & 0b01111111
+        data = data | 0x80
         self.write(BMA400.Regs.BMA400_INT_CONFIG_1, data)
 
-    def configIntPin(self):
-        data=self.read(BMA400.Regs.BMA400_INT_1_2_CTRL)
-        data=data&0b11011101
-        data=data|0b00100010
-        self.write(BMA400.Regs.BMA400_INT_1_2_CTRL,data)
+    setLatch = set_latch  # Alias for camelCase compatibility
 
-    def setRouteGen1(self):
-        data=self.read(BMA400.Regs.BMA400_INT_1_MAP)
-        data=data&0b11111011
-        data=data|0b00000100
-        self.write(BMA400.Regs.BMA400_INT_1_MAP,data)
+    def config_int_pin(self):
+        """ Config interrupt pin """
+        data = self.read(BMA400.Regs.BMA400_INT_1_2_CTRL)
+        data = data & 0b11011101
+        data = data | 0b00100010
+        self.write(BMA400.Regs.BMA400_INT_1_2_CTRL, data)
+
+    configIntPin = config_int_pin  # Alias for camelCase compatibility
+
+    def set_route_gen1(self):
+        data = self.read(BMA400.Regs.BMA400_INT_1_MAP)
+        data = data & 0b11111011
+        data = data | 0b00000100
+        self.write(BMA400.Regs.BMA400_INT_1_MAP, data)
+
+    setRouteGen1 = set_route_gen1  # Alias for camelCase compatibility
 
     def enableGen1(self):
         data=self.read(BMA400.Regs.BMA400_INT_CONFIG_0)
@@ -230,35 +238,48 @@ class BMA400(IMUBase):
         data=data|0b00000100
         self.write(BMA400.Regs.BMA400_INT_CONFIG_0,data)
 
-    def setOSR(self,oversampling):
+    def set_osr(self, oversampling):
         data=self.read(BMA400.Regs.BMA400_ACC_CONFIG_1)
         data=data&0b11001111
         data=data|(oversampling<<4)
         self.write(BMA400.Regs.BMA400_ACC_CONFIG_1,data)
 
-    def setPoweMode(self,mode):
+    setOSR = set_osr  # Alias for camelCase compatibility
+
+    def set_power_mode(self, powerMode):
+        """ set power mode """
         data = self.read(BMA400.Regs.BMA400_ACC_CONFIG_0)
-        data = (data & 0xfc) | mode
+        data = (data & 0xfc) | powerMode
         self.write(BMA400.Regs.BMA400_ACC_CONFIG_0, data)
 
-    def setFullScaleRange(self,range):
-        scales={BMA400.Range.RANGE_2G:2,BMA400.Range.RANGE_4G:4,BMA400.Range.RANGE_8G:8,BMA400.Range.RANGE_16G:16}
-        self.acc_scale=scales[range]
+    setPowerMode = set_power_mode  # Alias for camelCase compatibility
+
+    def set_full_scale_range(self, fullScaleRange):
+        """ set full scale range """
+        scales = {BMA400.Range.RANGE_2G: 2, BMA400.Range.RANGE_4G: 4, BMA400.Range.RANGE_8G: 8, BMA400.Range.RANGE_16G: 16}
+        self.acc_scale = scales[fullScaleRange]
 
         data = self.read(BMA400.Regs.BMA400_ACC_CONFIG_1)
-        data = (data & 0x3f) | (range << 6)
+        data = (data & 0x3f) | (fullScaleRange << 6)
         self.write(BMA400.Regs.BMA400_ACC_CONFIG_1, data)
 
-    def setOutputDataRate(self,odr):
+    setFullScaleRange = set_full_scale_range  # Alias for camelCase compatibility
+
+    def set_output_data_rate(self, outputDataRate):
+        """ set output data rate """
         data = self.read(BMA400.Regs.BMA400_ACC_CONFIG_1)
-        data = (data & 0xf0) | odr
-        self.write(BMA400.Regs.BMA400_ACC_CONFIG_1, data)       
-    
-    def setFilter(self,filter):
+        data = (data & 0xf0) | outputDataRate
+        self.write(BMA400.Regs.BMA400_ACC_CONFIG_1, data)
+
+    setOutputDataRate = set_output_data_rate  # Alias for camelCase compatibility
+
+    def set_filter(self, filter):
         data= self.read(BMA400.Regs.BMA400_ACC_CONFIG_2)
         data= data & 0b11110011
         data= data| (filter<<2)
         self.write(BMA400.Regs.BMA400_ACC_CONFIG_2,data)
+
+    setFilter = set_filter  # Alias for camelCase compatibility
 
     def get_accel(self):
         """Get accelerometer values (in multiples of g)        

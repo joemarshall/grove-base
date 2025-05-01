@@ -22,7 +22,7 @@ import smbus2 as smbus
 
 bus=smbus.SMBus(1)
     
-def readNFCData(addr,length):
+def read_nfc_data(addr, length):
     """ Read some data from eeprom of the Grove NFC Tag module 
     
         Args:
@@ -46,7 +46,7 @@ def readNFCData(addr,length):
           time.sleep(0.1)
     print("Failed to read NFC data 10 times")
 
-def writeNFCData(addr,data):
+def write_nfc_data(addr, data):
     """ Write some data to the eeprom of the Grove NFC Tag module
     
         Args:
@@ -73,7 +73,7 @@ class NFCTagBuffer:
         self.bytes=[]
     
     # write data to the tag at current position and increment write position if needed
-    def writeData(self, bytes):
+    def write_data(self, bytes):
         #print(("write:"+str(bytes)))
         self.bytes.extend(bytes)
         self.flush(False)
@@ -82,29 +82,34 @@ class NFCTagBuffer:
     # if partialBuffer is true, then we write a partial buffer if we
     # have >1 and <4 bytes
     # buffer space 1 takes the current position
-    def flush(self, partialBuffer=True):
+    def flush(self, partial_buffer=True):
         self.posAtStart=self.writePosition
         while len(self.bytes)>3:
-            writeNFCData(self.writePosition*4,self.bytes[0:4])
+            write_nfc_data(self.writePosition*4,self.bytes[0:4])
             self.bytes=self.bytes[4:]
             self.writePosition+=1
             if self.writePosition>=2048:
                 self.writePosition=1
-        if partialBuffer and len(self.bytes)>0:
+        if partial_buffer and len(self.bytes)>0:
             self.bytes.extend([0]*(4-len(self.bytes)))
-            writeNFCData(self.writePosition*4,self.bytes)
+            write_nfc_data(self.writePosition*4,self.bytes)
             self.bytes=[]
             self.writePosition+=1
             if self.writePosition>=2048:
                 self.writePosition=1
         if self.posAtStart<self.writePosition:
-            writeNFCData(0,[self.writePosition>>8,self.writePosition&0xff,0,0])
+            write_nfc_data(0,[self.writePosition>>8,self.writePosition&0xff,0,0])
+
+readNFCData = read_nfc_data
+writeNFCData = write_nfc_data
+NFCTagBuffer.writeData = NFCTagBuffer.write_data
+NFCTagBuffer.flush = NFCTagBuffer.flush
 
 if __name__=="__main__":
-    print((readNFCData(0,16)))
+    print((read_nfc_data(0,16)))
     time.sleep(0.1)
-    writeNFCData(0,[11,12,13,14,15,16,17,18,19])
+    write_nfc_data(0,[11,12,13,14,15,16,17,18,19])
     time.sleep(0.1)
-    print(( readNFCData(0,16)))
+    print((read_nfc_data(0,16)))
 
 

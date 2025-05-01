@@ -167,7 +167,7 @@ class AnalogPinSensor:
 
     def get_level(self):
         """return the level of this analog pin (from 0 to 1023)"""
-        return grovepi.analogRead(self.pin)
+        return grovepi.analog_read(self.pin)
 
 
 class DigitalPinSensor:
@@ -260,7 +260,7 @@ class UltrasonicSensor:
 
     def get_level(self):
         """Return the sensed distance in centimetres"""
-        return grovepi.ultrasonicRead(self.pin)
+        return grovepi.ultrasonic_read(self.pin)
 
     def begin_read(self):
         """Begin an ultrasonic read. Until you call the matching end_read, *DO NOT* get values from
@@ -268,14 +268,14 @@ class UltrasonicSensor:
         happen. There is *NO SAFETY CODE* stopping you doing bad things here. You may read accelerometers,
         gyroscopes etc. to your hearts content though. This lets you combine ultrasonic pulses with high
         speed accelerometer readings."""
-        grovepi.ultrasonicReadBegin(self.pin)
+        grovepi.ultrasonic_read_begin(self.pin)
 
     def end_read(self):
         """Get the value of an ultrasonic read. Only call this after a begin_read call. If there is no
         response yet, it will return None, otherwise it returns the distance in centimetres where the ultrasonic
         pulse bounced off an object. This always returns immediately and does not delay.
         """
-        value = grovepi.ultrasonicReadFinish(self.pin)
+        value = grovepi.ultrasonic_read_finish(self.pin)
         if value >= 0:
             return value
         else:

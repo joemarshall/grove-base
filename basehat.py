@@ -46,13 +46,15 @@ def _read_shield_type():
 
 _read_shield_type()
 # analog read via the onboard ADC
-def analogRead(pin):
+def analog_read(pin):
     if pin not in ANALOG_PINS:
         raise BadPinException(f"Grove base doesn't support analog read on pin {pin}")
     return (bus.read_word_data(ADC_ADDRESS,0x10+pin))>>2
 
+analogRead = analog_read  # Alias for camelCase compatibility
+
 # digital read via raspberry pi GPIO
-def digitalRead(pin):
+def digital_read(pin):
     if pin not in DIGITAL_PINS:
         raise BadPinException(f"Grove base doesn't support digital read on pin {pin}")
     with gpiod.request_lines("/dev/gpiochip4",
@@ -64,8 +66,10 @@ def digitalRead(pin):
     ) as req:
         return 1 if req.get_value(pin) == gpiod.line.Value.ACTIVE else 0
 
+digitalRead = digital_read  # Alias for camelCase compatibility
+
 # digital write via raspberry pi GPIO
-def digitalWrite(pin,output):
+def digital_write(pin,output):
     if pin not in DIGITAL_PINS:
         raise BadPinException(f"Grove base doesn't support digital write on pin {pin}")
     with gpiod.request_lines("/dev/gpiochip4",
@@ -78,21 +82,25 @@ def digitalWrite(pin,output):
     ) as req:
         pass
 
+digitalWrite = digital_write  # Alias for camelCase compatibility
+
 # set pin mode of digital pin only
-def pinMode(pin,mode):
+def pin_mode(pin,mode):
     if pin not in DIGITAL_PINS:
         raise BadPinException(f"Grove base doesn't support digital pin {pin}")
     if mode.lower()=="OUTPUT":
-        digitalWrite(pin,0)
+        digital_write(pin,0)
     else:
-        digitalRead(pin)
+        digital_read(pin)
+
+pinMode = pin_mode  # Alias for camelCase compatibility
 
 _ULTRASOUND_MAX_TIME=0.2
 _ULTRASOUND_MAX_DISTANCE=500
 _ULTRASOUND_MAX_VALUE=500
 
 # ultrasonic read via raspberry pi GPIO
-def ultrasonicRead(pin,fp_distance=False):
+def ultrasonic_read(pin,fp_distance=False):
     distance=_ULTRASOUND_MAX_VALUE
     if pin not in DIGITAL_PINS:
         raise BadPinException(f"Grove base doesn't support digital pin {pin}")
@@ -130,11 +138,15 @@ def ultrasonicRead(pin,fp_distance=False):
         distance=_ULTRASOUND_MAX_VALUE
     return distance
     
-def ultrasonicReadSetMaxDistance(distanceMax=150,maxOutputValue=500):
+def ultrasonic_read_set_max_distance(distanceMax=150,maxOutputValue=500):
     global _ULTRASOUND_MAX_TIME,_ULTRASOUND_MAX_DISTANCE,_ULTRASOUND_MAX_VALUE
     _ULTRASOUND_MAX_TIME=(1.5*distanceMax * 29 *2000)*1e-9
     _ULTRASOUND_MAX_DISTANCE=distanceMax
     _ULTRASOUND_MAX_VALUE=maxOutputValue
+
+ultrasonicRead = ultrasonic_read  # Alias for camelCase compatibility
+    
+ultrasonicReadSetMaxDistance = ultrasonic_read_set_max_distance  # Alias for camelCase compatibility
 
 dht_handler = None
 
@@ -153,7 +165,7 @@ if __name__=="__main__":
     import time
     print(f"Board type: {SHIELD_TYPE} ADC:{ADC_ADDRESS}")
     ot=0
-    ultrasonicReadSetMaxDistance(15)    
+    ultrasonic_read_set_max_distance(15)    
     while True:
 #        time.sleep(1)
  #       print("DR16:",digitalRead(16))

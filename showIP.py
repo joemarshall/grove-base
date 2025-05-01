@@ -41,15 +41,17 @@ time.sleep(5)
 
 # changed to only say IP address, so as not to confuse people with gateway addresses
 
-def formatAddr(addr,type):
-  retVal=addr
-  if len(retVal)<14:
-    retVal+=" "*(14-len(retVal))
-  if len(retVal)==14:
-    retVal+=":"
-  if len(retVal)<16:
-    retVal+=type
-  return retVal[0:16]
+def format_addr(addr, type):
+    retVal = addr
+    if len(retVal) < 14:
+        retVal += " " * (14 - len(retVal))
+    if len(retVal) == 14:
+        retVal += ":"
+    if len(retVal) < 16:
+        retVal += type
+    return retVal[0:16]
+
+formatAddr = format_addr  # Alias for camelCase compatibility
 
 countLeft=300
 while countLeft==None or countLeft>0:
@@ -70,9 +72,9 @@ while countLeft==None or countLeft>0:
 #        grovelcd.setText("%s\ngateway"%values[2])
       else:
         if values[2].find("eth")!=-1:
-          ethAddr=formatAddr(values[8],"e")
+          ethAddr=format_addr(values[8],"e")
         if values[2].find("wlan")!=-1:
-          wlanAddr=formatAddr(values[8],"w")      
+          wlanAddr=format_addr(values[8],"w")      
   adapterList=subprocess.check_output(['ifconfig'])
   if adapterList.find(b"wlan0")==-1:
       wlanAddr="Plug USB WIFI in"        
@@ -83,4 +85,4 @@ while countLeft==None or countLeft>0:
   time.sleep(2.0)
   if countLeft!=None:
     countLeft-=2
-  
+

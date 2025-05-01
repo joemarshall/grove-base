@@ -281,7 +281,7 @@ class PN532(object):
         else:
             return None
 
-    def wakeup(self):
+    def wake_up(self):
         pass
         #print("Wakeup")
 #        msg = '\x55\x55\x00\x00\x00'
@@ -291,7 +291,9 @@ class PN532(object):
 #            self.bus.i2c_rdwr(frameMsg)
 #            ack = self._ack_wait(1000)
 #            time.sleep(0.3)
-    
+
+    wakeup=wake_up # alias for single word version
+
     def call_function(self, command, response_length=0, params=[], timeout_sec=1):
         """Send specified command to the PN532 and expect up to response_length
         bytes back in a response.  Note that less than the expected bytes might
@@ -323,7 +325,7 @@ class PN532(object):
         """Initialize communication with the PN532.  Must be called before any
         other calls are made against the PN532.
         """
-        self.wakeup()
+        self.wake_up()
 
     def get_firmware_version(self):
         """Call PN532 GetFirmwareVersion function and return a tuple with the IC,

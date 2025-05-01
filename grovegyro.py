@@ -114,15 +114,17 @@ bus=smbus.SMBus(1)
 def init():
     global _GYRO_INITED
     _GYRO_INITED=True
-    setAccScaleRange(RANGE_6G)
-    setAccOutputDataRate(ODR_100)
-    setAccPowerMode(ACC_ACTIVE)
+    set_acc_scale_range(RANGE_6G)
+    set_acc_output_data_rate(ODR_100)
+    set_acc_power_mode(ACC_ACTIVE)
     
-    setGyroScaleRange(RANGE_1000)
-    setGyroOutputDataRate(ODR_2000_BW_532)
-    setGyroPowerMode(GYRO_NORMAL)
+    set_gyro_scale_range(RANGE_1000)
+    set_gyro_output_data_rate(ODR_2000_BW_532)
+    set_gyro_power_mode(GYRO_NORMAL)
 
-def setAccPowerMode(mode):
+init = init
+
+def set_acc_power_mode(mode):
     if mode == ACC_ACTIVE:
         bus.write_byte_data(BMI088_ACC_ADDRESS, BMI088_ACC_PWR_CTRl, 0x04)
         bus.write_byte_data(BMI088_ACC_ADDRESS, BMI088_ACC_PWR_CONF, 0x00)
@@ -130,7 +132,9 @@ def setAccPowerMode(mode):
         bus.write_byte_data(BMI088_ACC_ADDRESS, BMI088_ACC_PWR_CONF, 0x03)
         bus.write_byte_data(BMI088_ACC_ADDRESS, BMI088_ACC_PWR_CTRl, 0x00)
 
-def setGyroPowerMode(mode):
+setAccPowerMode = set_acc_power_mode
+
+def set_gyro_power_mode(mode):
     if mode == GYRO_NORMAL:
         bus.write_byte_data(BMI088_GYRO_ADDRESS, BMI088_GYRO_LPM_1, GYRO_NORMAL)
     elif mode == GYRO_SUSPEND:
@@ -138,7 +142,9 @@ def setGyroPowerMode(mode):
     elif mode == GYRO_DEEP_SUSPEND:
         bus.write_byte_data(BMI088_GYRO_ADDRESS, BMI088_GYRO_LPM_1, GYRO_DEEP_SUSPEND)
 
-def setAccScaleRange(range):
+setGyroPowerMode = set_gyro_power_mode
+
+def set_acc_scale_range(range):
     global _accRange
     if range == RANGE_3G:
         _accRange = 3.0
@@ -150,14 +156,18 @@ def setAccScaleRange(range):
         _accRange = 24.0
     bus.write_byte_data(BMI088_ACC_ADDRESS, BMI088_ACC_RANGE, range)
 
-def setAccOutputDataRate(odr):    
+setAccScaleRange = set_acc_scale_range
+
+def set_acc_output_data_rate(odr):    
     data = bus.read_byte_data(BMI088_ACC_ADDRESS, BMI088_ACC_CONF);
     data = data & 0xf0;
     data = data | odr;
     
     bus.write_byte_data(BMI088_ACC_ADDRESS, BMI088_ACC_CONF, data)
 
-def setGyroScaleRange(range):
+setAccOutputDataRate = set_acc_output_data_rate
+
+def set_gyro_scale_range(range):
     global _gyroRange
     if range == RANGE_2000:
         _gyroRange = 2000
@@ -171,10 +181,14 @@ def setGyroScaleRange(range):
         _gyroRange = 125
     bus.write_byte_data(BMI088_GYRO_ADDRESS, BMI088_GYRO_RANGE, range)
 
-def setGyroOutputDataRate(odr):
+setGyroScaleRange = set_gyro_scale_range
+
+def set_gyro_output_data_rate(odr):
     bus.write_byte_data(BMI088_GYRO_ADDRESS, BMI088_GYRO_BAND_WIDTH, odr)
     
-def getAccel():
+setGyroOutputDataRate = set_gyro_output_data_rate
+
+def get_accel():
     """Get accelerometer values (in multiples of g)        
     """
     if not _GYRO_INITED:
@@ -184,7 +198,9 @@ def getAccel():
     mult=_accRange / 32768
     return (ax*mult,ay*mult,az*mult)
 
-def getGyro():
+getAccel = get_accel
+
+def get_gyro():
     """Get gyro values (in degrees per second)        
     """
     if not _GYRO_INITED:
@@ -193,6 +209,8 @@ def getGyro():
     ax,ay,az=struct.unpack('hhh',struct.pack("BBBBBB",*accData))
     mult=_gyroRange / 32768
     return (ax*mult,ay*mult,az*mult)
+
+getGyro = get_gyro
 
 #init()
 

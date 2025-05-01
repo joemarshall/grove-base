@@ -5,12 +5,12 @@
 
     example code:
         # set text (\\n goes onto the second line 
-        grovelcd.setText("Hello world, \\nHow are you") 
+        grovelcd.set_text("Hello world, \\nHow are you") 
         # set the backlight:
         # red off
         # green half of full brightness
         # blue one quarter of full brighness.
-        grovelcd.setRGB(0,128,64)
+        grovelcd.set_rgb(0,128,64)
 """
 
 import time,sys
@@ -25,7 +25,7 @@ firstTime=True
 
 bus=smbus.SMBus(1)
 
-def setRGB(r,g,b):
+def set_rgb(r, g, b):
     """
         Set backlight colour to (r,g,b)
         
@@ -44,37 +44,40 @@ def setRGB(r,g,b):
     bus.write_byte_data(DISPLAY_RGB_ADDR,3,g)
     bus.write_byte_data(DISPLAY_RGB_ADDR,2,b)
 
-def textCommand(cmd):
+setRGB = set_rgb # Alias for camelCase compatibility
+
+def _text_command(cmd):
     """Used internally, don't mess with it unless you know what you're doing"""
     bus.write_byte_data(DISPLAY_TEXT_ADDR,0x80,cmd)
 
-
-def setCustomChar(charNum,charData):
+def set_custom_char(charNum, charData):
     charNum&=0x07
     cmd=0x40|(charNum<<3)
-    textCommand(cmd)
+    _text_command(cmd)
     bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,charData)
 
-def makeGraphChars():
+setCustomChar = set_custom_char # Alias for camelCase compatibility
+
+def make_graph_chars():
     for c in range(8):
         graphData= [0xf if d==c else 0 for d in range(8)]
 #        graphData= [0x4 for d in range(7)]
-        setCustomChar(c,graphData)        
+        set_custom_char(c,graphData)        
 
 
 _prevData=[[ord(' ')]*16,[ord(' ')]*16]        
 
-def setText(text,clear=False):
+def set_text(text, clear=False):
   """ Set text on display to <text> """
   global firstTime,_prevData
   if clear or firstTime:
-    textCommand(0x01) # clear display
+    _text_command(0x01) # clear display
     time.sleep(0.1)
-    textCommand(0x08|0x04) # display on, no cursor
+    _text_command(0x08|0x04) # display on, no cursor
     time.sleep(0.1)
-    textCommand(0x20|0x08) # two line
+    _text_command(0x20|0x08) # two line
     time.sleep(0.1)
-    textCommand(0x04|0x02) # left to right text
+    _text_command(0x04|0x02) # left to right text
     time.sleep(0.1)
     
     firstTime=False
@@ -99,16 +102,17 @@ def setText(text,clear=False):
   thisData=[textData1,textData2]
   if thisData!=_prevData:
       _prevData=thisData
-      textCommand(0x80) # line 1 select
+      _text_command(0x80) # line 1 select
       bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,textData1)
-      textCommand(0xc0) # line 2 select
+      _text_command(0xc0) # line 2 select
       bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,textData2)
 
-    
-def addGraphData(data,x,y,columns,rows):
+setText = set_text
+
+def add_graph_data(data, x, y, columns, rows):
     global firstTime
     if firstTime:
-        setText("",True)
+        set_text("",True)
     data=list(data)
     global _prevData
     numChars=16//columns
@@ -130,7 +134,7 @@ def addGraphData(data,x,y,columns,rows):
             thisRow[c+startChar]=outVal
         try:
             if _prevData[rowIDX]!=thisRow:
-                textCommand(0x80|(0x40*rowIDX)) # line X select
+                _text_command(0x80|(0x40*rowIDX)) # line X select
                 bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,thisRow)            
                 _prevData[rowIDX]=thisRow
         except OSError:
@@ -154,11 +158,11 @@ def addGraphData(data,x,y,columns,rows):
                 row2[c+startChar]=ord(' ')
         try:
             if _prevData[0]!=row1:
-                textCommand(0x80) # line X select
+                _text_command(0x80) # line X select
                 bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,row1)            
                 _prevData[0]=row1
             if _prevData[1]!=row2:
-                textCommand(0xc0) # line X select
+                _text_command(0xc0) # line X select
                 bus.write_i2c_block_data(DISPLAY_TEXT_ADDR,0x40,row2)
                 _prevData[1]=row2
         except OSError:
@@ -166,27 +170,26 @@ def addGraphData(data,x,y,columns,rows):
         _prevData=[row1,row2]
         # spread graph over 2 rows
         
-        
 
 if __name__=="__main__":
-    setRGB(0,128,64)
-    setText("")
-    makeGraphChars()
-    setText("YO, \n"+"".join([chr(0),chr(1),chr(2),chr(3),chr(4),chr(5),chr(6),chr(7)]))
+    set_rgb(0,128,64)
+    set_text("")
+    make_graph_chars()
+    set_text("YO, \n"+"".join([chr(0),chr(1),chr(2),chr(3),chr(4),chr(5),chr(6),chr(7)]))
     x=0
     graphData=[]
     for c in range(50):
         graphData.append(0.5+0.5*math.sin(x))
         x+=0.1
     for c in range(0,255):
-      setRGB(c,255-c,0)
+      set_rgb(c,255-c,0)
       graphData.append(0.5+0.5*math.sin(x))
       graphData=graphData[1:]
       x+=0.1
-      addGraphData(graphData,1,0,2,1)
+      add_graph_data(graphData,1,0,2,1)
       time.sleep(0.01)
-    setRGB(0,255,0)
-#    setText("Bye bye")
+    set_rgb(0,255,0)
+#    set_text("Bye bye")
 
 
 

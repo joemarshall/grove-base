@@ -32,13 +32,13 @@ else:
     p_version=3
 
 bus=None
-def resetBus(retries):
+def reset_bus(retries):
     global bus
-    if bus!=None:
+    if bus is not None:
         bus.close()
-        bus=None
+        bus = None
         # if we have a lot of retries then sleep so that bus definitely gets closed properly
-        if retries>=5: 
+        if retries >= 5: 
             time.sleep(0.1)
     rev = GPIO.RPI_REVISION
     if rev > 1:
@@ -46,13 +46,16 @@ def resetBus(retries):
     else:
         bus = smbus.SMBus(0) 
 
-def closeBus():
+def close_bus():
     global bus
-    if bus!=None:
+    if bus is not None:
         bus.close()
-        bus=None
+        bus = None
 
-resetBus(0)
+resetBus = reset_bus  # Alias for camelCase compatibility
+closeBus = close_bus  # Alias for camelCase compatibility
+
+reset_bus(0)
 
 data_not_available_cmd=23
 
@@ -82,13 +85,13 @@ retries = 10
 # Write I2C block
 def write_i2c_block(block):
     """ Write I2C block, used internally only """
-    if bus==None:
-        resetBus(-1)
+    if bus is None:
+        reset_bus(-1)
     for i in range(retries):
         try:
             return bus.write_i2c_block_data(address, 1,block)
         except IOError:
-            resetBus(i)
+            reset_bus(i)
             if debug:
                 print ("IOError write_i2c_block")
     if debug:
@@ -98,13 +101,13 @@ def write_i2c_block(block):
 # Read I2C byte
 def read_i2c_byte():
     """ Read I2C byte, used internally only """
-    if bus==None:
-        resetBus(-1)
+    if bus is None:
+        reset_bus(-1)
     for i in range(retries):
         try:
             return bus.read_byte(address)
         except IOError:
-            resetBus(i)
+            reset_bus(i)
             if debug:
                 print ("IOError")
     if debug:
@@ -115,8 +118,8 @@ def read_i2c_byte():
 # Read I2C write_i2c_block
 def read_i2c_block(no_bytes):
     """ Read I2C block, used internally only """
-    if bus==None:
-        resetBus(-1)    
+    if bus is None:
+        reset_bus(-1)    
     for i in range(retries):
         try:
             msg=smbus.i2c_msg.read(address,no_bytes)
@@ -129,7 +132,7 @@ def read_i2c_block(no_bytes):
                 continue
             return retVal
         except IOError:
-            resetBus(i)
+            reset_bus(i)
             if debug:
                 print ("IOError read_i2c_block")
     if debug:
@@ -149,10 +152,10 @@ def read_identified_i2c_block(read_command_id, no_bytes):
             data=read_i2c_block(no_bytes+1)
     return data[1:]
 
-def digitalRead(pin):
+def digital_read(pin):
     """ Arduino Digital Read from digital pin <pin>"""
-    if bus==None:
-        resetBus(-1)
+    if bus is None:
+        reset_bus(-1)
     write_i2c_block(dRead_cmd + [pin, unused, unused])    
     if gpVersion<[1,4,0]:
         data= read_i2c_byte()
@@ -160,31 +163,34 @@ def digitalRead(pin):
         data = read_identified_i2c_block( dRead_cmd, no_bytes = 1)[0]
     return data
 
-# Arduino Digital Write
-def digitalWrite(pin, value):
+def digital_write(pin, value):
     """ Arduino Digital write to digital pin <pin>"""
     write_i2c_block(dWrite_cmd + [pin, value, unused])
     read_i2c_block(1)
     return 1
-    
-def versionList():    
+
+digitalWrite = digital_write  # Alias for camelCase compatibility
+
+def version_list():
     """ Read the firmware version from the GrovePI board """
-    if bus==None:
-        resetBus(-1)
+    if bus is None:
+        reset_bus(-1)
     for i in range(retries):
         try:
-            write_i2c_block(version_cmd+[unused,unused,unused])
+            write_i2c_block(version_cmd + [unused, unused, unused])
             time.sleep(.1)
-            values=read_i2c_block(4)
-            vCmd=values[0]
-            number=values
+            values = read_i2c_block(4)
+            v_cmd = values[0]
+            number = values
             return number[1:]
         except IOError:
-            resetBus(i)
+            reset_bus(i)
             if debug:
-                print ("IOError")
-    return [-1,-1,-1]
-    
+                print("IOError")
+    return [-1, -1, -1]
+
+versionList = version_list  # Alias for camelCase compatibility
+
 def version():
     """ Read the firmware version from the GrovePI board """
     if bus==None:
@@ -202,9 +208,9 @@ def version():
                 print ("IOError")
     return "-1.-1.-1"
 
-    
+
 #Setting Up Pin mode on Arduino
-def pinMode(pin, mode):
+def pin_mode(pin, mode):
     """ Arduino set pin mode for digital pin <pin>
     
         Don't mess with this - if you set a pin as output, and connect a sensor to it, bad things can happen.
@@ -219,24 +225,27 @@ def pinMode(pin, mode):
         write_i2c_block(pMode_cmd + [pin, 1, unused])
     elif mode == "INPUT":
         write_i2c_block(pMode_cmd + [pin, 0, unused])
-    read_i2c_block(no_bytes = 1)        
+    read_i2c_block(no_bytes=1)
     return 1
-        
 
-# Read analog value from Pin
-def analogRead(pin):
+pinMode = pin_mode  # Alias for camelCase compatibility
+
+def analog_read(pin):
     """ Read analog value from analog pin <pin> """ 
     write_i2c_block(aRead_cmd + [pin, unused, unused])
-    number = read_identified_i2c_block(aRead_cmd, no_bytes = 2)
+    number = read_identified_i2c_block(aRead_cmd, no_bytes=2)
     return number[0] * 256 + number[1]
 
-# Write PWM
-def analogWrite(pin, value):
+analogRead = analog_read  # Alias for camelCase compatibility
+
+def analog_write(pin, value):
     """ Write PWM on digital pin <pin> """
     write_i2c_block(aWrite_cmd + [pin, value, unused])
-    read_i2c_block(no_bytes = 1)
+    read_i2c_block(no_bytes=1)
     return 1
-                     
+
+analogWrite = analog_write  # Alias for camelCase compatibility
+
 def temp(pin,model = '1.0'):
     """ Read temp from Grove Temp Sensor """
     # each of the sensor revisions use different thermistors, each with their own B value constant
@@ -250,40 +259,43 @@ def temp(pin,model = '1.0'):
     resistance = (float)(1023 - a) * 10000 / a
     t = (float)(1 / (math.log(resistance / 10000) / bValue + 1 / 298.15) - 273.15)
     return t
-    
-def ultrasonicRead(pin):
+
+def ultrasonic_read(pin):
     """ Read value from Grove Ultrasonic sensor """
     write_i2c_block(uRead_cmd + [pin, unused, unused])
-    if gpVersion<[1,4,0]:
-        time.sleep(.06)#firmware has a time of 50ms so wait for more than that
+    if gpVersion < [1, 4, 0]:
+        time.sleep(.06)  # firmware has a time of 50ms so wait for more than that
 
-    number = read_identified_i2c_block(uRead_cmd, no_bytes = 2)
+    number = read_identified_i2c_block(uRead_cmd, no_bytes=2)
     return (number[0] * 256 + number[1])
 
-    
-def ultrasonicReadBegin(pin):
+ultrasonicRead = ultrasonic_read  # Alias for camelCase compatibility
+
+def ultrasonic_read_begin(pin):
     """ Start to read value from Grove Ultrasonic sensor - you can't do other grovepi things before doing ultrasonicReadFinish, but you can read accelerometer, nfc etc. """
-    write_i2c_block(uRead_cmd+[pin,0,0])
+    write_i2c_block(uRead_cmd + [pin, 0, 0])
     return 0
 
-def ultrasonicReadFinish(pin):
+ultrasonicReadBegin = ultrasonic_read_begin  # Alias for camelCase compatibility
+
+def ultrasonic_read_finish(pin):
     """ Finish reading value from Grove Ultrasonic sensor - you can't do other grovepi things between ultrasonicReadBegin and ultrasonicReadFinish, but you can read accelerometer, nfc etc. Returns -1 if not ready """
     number = read_i2c_block(3) 
-    if number[0:1]==uRead_cmd:
-        return (number[1]*256+number[2])
+    if number[0:1] == uRead_cmd:
+        return (number[1] * 256 + number[2])
     else:
         return -1
-        
-           
+
+ultrasonicReadFinish = ultrasonic_read_finish  # Alias for camelCase compatibility
 
 _PREV_DHT={}
 _PREV_DHT_TIME=time.time()        
 _PREV_DHT_PIN=-1
 
 def dht(pin,module_type=0):
+    """ Read and return temperature and humidity from Grove DHT Pro """
     global _PREV_DHT,_PREV_DHT_TIME,_PREV_DHT_PIN
     retVal=_PREV_DHT.get(pin,[0,0])
-    """ Read and return temperature and humidity from Grove DHT Pro """
     for retries in range(5):
         write_i2c_block(dht_temp_cmd + [pin, module_type, unused])
         if gpVersion<[1,4,0]:
@@ -327,4 +339,4 @@ def dht(pin,module_type=0):
     return retVal
 
     
-gpVersion=versionList()
+gpVersion=version_list()

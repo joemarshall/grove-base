@@ -114,7 +114,7 @@ def _initv2(scale):
     LSM303_write(MAG_SCALE_2, CTRL_REG6)        # magnetic scale = +/-1.3Gauss
     LSM303_write(0x00, CTRL_REG7)           # 0x00 = continouous conversion mode
 
-def init6Axis(scale=2):
+def init_6_axis(scale=2):
     global ACCEL_SCALE
     try:
         LSM303_write(0x27,CTRL_REG1_A)
@@ -134,12 +134,12 @@ def init6Axis(scale=2):
     LSM303_write(0x00, MR_REG_M)  # 0x00 = continouous conversion mode
     is6axisInitialised=True
 
-def getAccel():
+def get_accel():
     """Get accelerometer values (in multiples of g)        
     """
     global is6axisInitialised
     if not is6axisInitialised:
-      init6Axis()
+      init_6_axis()
     multiplier=ACCEL_SCALE/(2.**15.) 
     x= LSM303_readSigned16Bit(OUT_X_L_A,OUT_X_H_A)*multiplier
     y= LSM303_readSigned16Bit(OUT_Y_L_A,OUT_Y_H_A)*multiplier
@@ -147,12 +147,12 @@ def getAccel():
     return (x,y,z)
 
 
-def getMag():
+def get_mag():
     """Get magnetometer values. 
     """
     global is6axisInitialised
     if not is6axisInitialised:
-      init6Axis()
+      init_6_axis()
     if STATUS_REG_M is not None:
       # wait until value ready
       while LSM303_read(STATUS_REG_M)&0x08 !=0x08:
@@ -162,7 +162,7 @@ def getMag():
     z= LSM303_readSigned16Bit(OUT_Z_L_M,OUT_Z_H_M)
     return (x,y,z)
     
-def getRotationMatrix(mag=None,accel=None):
+def get_rotation_matrix(mag=None,accel=None):
     """ Returns a 3x3 matrix of how the device is rotated, based on magnetometer and accelerometer values
 
     Args:
@@ -176,9 +176,9 @@ def getRotationMatrix(mag=None,accel=None):
         or None if there isn't enough information (device is in freefall)
     """
     if mag==None:
-        mag=getMag()
+        mag=get_mag()
     if accel==None:
-        accel=getAccel()
+        accel=get_accel()
     Ax = accel[0]
     Ay = accel[1]
     Az = accel[2]
@@ -205,7 +205,7 @@ def getRotationMatrix(mag=None,accel=None):
     Mz = Ax*Hy - Ay*Hx;
     return ((Hx,Hy,Hz),(Mx,My,Mz),(Ax,Ay,Az))
     
-def getOrientation(matrix=None,errorValue=(0,0,0)):
+def get_orientation(matrix=None,error_value=(0,0,0)):
     """ Get orientation values (Yaw, pitch, roll) from rotation matrix
     
     Args: 
@@ -220,25 +220,25 @@ def getOrientation(matrix=None,errorValue=(0,0,0)):
         (yaw, pitch, roll) tuple
     """
     if matrix==None:
-        matrix=getRotationMatrix()
+        matrix=get_rotation_matrix()
     if matrix==None:
-        return errorValue        
+        return error_value        
     yaw=atan2(matrix[0][1], matrix[1][1])
     pitch=asin(-matrix[2][1])
     roll=atan2(-matrix[2][0], matrix[2][2])
     return yaw,pitch,roll
     
-def LSM303_readSigned16Bit(arg1,arg2):
+def lsm303_read_signed_16bit(arg1,arg2):
     bytes=struct.pack("BB",LSM303_read(arg1),LSM303_read(arg2))
     return struct.unpack("<h",bytes)[0]
 
-def LSM303_write(data, address):
+def lsm303_write(data, address):
     if address >= 0x20:
         bus.write_byte_data(SIX_AXIS_ACCEL_ADDR,address,data)
     else:
         bus.write_byte_data(SIX_AXIS_MAG_ADDR,address,data)
 
-def LSM303_read( address):
+def lsm303_read(address):
     if address >= 0x20:
         return bus.read_byte_data(SIX_AXIS_ACCEL_ADDR,address)
     else:
@@ -246,7 +246,7 @@ def LSM303_read( address):
     
 
 if __name__=="__main__":
-    init6Axis()
+    init_6_axis()
     while True:
-        print((getAccel(),getOrientation(),getMag()))
+        print((get_accel(),get_orientation(),get_mag()))
         time.sleep(0.5)
