@@ -137,7 +137,6 @@ class ICM20600(IMUBase):
     def _startup(self):
         self.start_i2c(big_endian=True)
         if self.read(ICM20600.Regs.WHO_AM_I) != 0x11:
-            print("WOO")
             raise IOError("ICM20600 returned incorrect device ID:",self.read(ICM20600.Regs.WHO_AM_I))
 
         # set clock to PLL / internal if PLL is not available yet, and enable everything

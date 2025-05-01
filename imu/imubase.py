@@ -35,14 +35,13 @@ class IMUBase:
                         if bus.read_byte_data(subaddr,reg)==value:
                             found_device=True
                         else:
-                            print(f"Wrong ID for {cls}")
                             continue
                 else:
                     reg,value=cls.ID_REG_VALUE
                     if bus.read_byte_data(addr,reg)==value:
                         found_device=True
                     else:
-                        print(f"Wrong ID for {cls}")
+                        continue
                 if found_device:
                     imu_list.append(IMUBase.imu_classes[addr])
             except IOError:
