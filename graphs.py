@@ -53,7 +53,7 @@ def set_style(graphName,colour,minVal,maxVal,subgraph_x=None,subgraph_y=None):
     
     
 def on_value(graphName,value):
-    """ Add a value to a named graph in the output box
+    r""" Add a value to a named graph in the output box
 
     Parameters
     ----------

@@ -423,7 +423,7 @@ class GyroSensor:
 
 
 class replayer:
-    """Replay pre-recorded sensor data from CSV files
+    r"""Replay pre-recorded sensor data from CSV files
 
     This class supports loading of CSV files into your code and replaying them. The actual CSV loading logic is done for you
     when your script is started, you just need to check if there is any replay data and use it if so. For example you might
@@ -553,7 +553,7 @@ class replayer:
 
     @staticmethod
     def get_level(*col_names):
-        """Get a sample worth of sensor levels from the CSV file
+        r"""Get a sample worth of sensor levels from the CSV file
 
         This returns selected columns from a line in the CSV file and then moves onto the next line. This means that
         if you want to read multiple columns, you have to do it in one call.
