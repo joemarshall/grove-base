@@ -30,18 +30,21 @@ class IMUBase:
         for addr,cls in IMUBase.imu_classes.items():
             try:
                 found_device=False
-                if hasattr(addr, '__iter__'):
-                    for subaddr,(reg,value) in zip(cls.ADDRESS,cls.ID_REG_VALUE):
-                        if bus.read_byte_data(subaddr,reg)==value:
+                if callable(cls.ID_REG_VALUE):
+                    found_device=cls.ID_REG_VALUE(bus)
+                else:
+                    if hasattr(addr, '__iter__'):
+                        for subaddr,(reg,value) in zip(cls.ADDRESS,cls.ID_REG_VALUE):
+                            if bus.read_byte_data(subaddr,reg)==value:
+                                found_device=True
+                            else:
+                                continue
+                    else:
+                        reg,value=cls.ID_REG_VALUE
+                        if bus.read_byte_data(addr,reg)==value:
                             found_device=True
                         else:
                             continue
-                else:
-                    reg,value=cls.ID_REG_VALUE
-                    if bus.read_byte_data(addr,reg)==value:
-                        found_device=True
-                    else:
-                        continue
                 if found_device:
                     imu_list.append(IMUBase.imu_classes[addr])
             except IOError:

@@ -11,7 +11,7 @@ _graph_values={}
 
 GRAPH_BUFFER_SIZE=128
 
-grovelcd.makeGraphChars()
+grovelcd.make_graph_chars()
 
 def set_style(graphName,colour,minVal,maxVal,subgraph_x=None,subgraph_y=None):
     """ Set the style of a named graph in the output box.
@@ -78,7 +78,7 @@ def on_value(graphName,value):
             value-=graph_style["min"]
             value/=(graph_style["max"]-graph_style["min"])
         _graph_values[graphName]=_graph_values[graphName][1:]+[value]
-        grovelcd.addGraphData(_graph_values[graphName],graph_style["x"],graph_style["y"],_cols,_rows)
+        grovelcd.add_graph_data(_graph_values[graphName],graph_style["x"],graph_style["y"],_cols,_rows)
         
 if __name__=="__main__":
     import time,math
