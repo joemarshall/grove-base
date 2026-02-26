@@ -103,6 +103,8 @@ def setText(text, clear=False):
         count += 1
         if count >= 16:
             row = 1
+        if count>=32:
+            break
     textData1 = line1 + (16 - len(line1)) * [ord(" ")]
     textData2 = line2 + (16 - len(line2)) * [ord(" ")]
     thisData = [textData1, textData2]
