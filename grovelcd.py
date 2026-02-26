@@ -39,12 +39,18 @@ def setRGB(r, g, b):
         b:
             blue (0=off, 255 = fully on)
     """
-    bus.write_byte_data(DISPLAY_RGB_ADDR, 0, 0)
-    bus.write_byte_data(DISPLAY_RGB_ADDR, 1, 0)
-    bus.write_byte_data(DISPLAY_RGB_ADDR, 0x08, 0xAA)
-    bus.write_byte_data(DISPLAY_RGB_ADDR, 4, r)
-    bus.write_byte_data(DISPLAY_RGB_ADDR, 3, g)
-    bus.write_byte_data(DISPLAY_RGB_ADDR, 2, b)
+    for retries in range(10):
+        try:
+            bus.write_byte_data(DISPLAY_RGB_ADDR, 0, 0)
+            bus.write_byte_data(DISPLAY_RGB_ADDR, 1, 0)
+            bus.write_byte_data(DISPLAY_RGB_ADDR, 0x08, 0xAA)
+            bus.write_byte_data(DISPLAY_RGB_ADDR, 4, r)
+            bus.write_byte_data(DISPLAY_RGB_ADDR, 3, g)
+            bus.write_byte_data(DISPLAY_RGB_ADDR, 2, b)            
+            return
+        except IOError:
+            time.sleep(0.01)
+    print("Failed to set colour of LCD display after 10 attempts, is it connected?", file=sys.stderr)
 
 
 def set_rgb(*args, **kwargs):
@@ -76,45 +82,51 @@ _prevData = [[ord(" ")] * 16, [ord(" ")] * 16]
 def setText(text, clear=False):
     """Set text on display to <text>"""
     global firstTime, _prevData
-    if clear or firstTime:
-        textCommand(0x01)  # clear display
-        time.sleep(0.1)
-        textCommand(0x08 | 0x04)  # display on, no cursor
-        time.sleep(0.1)
-        textCommand(0x20 | 0x08)  # two line
-        time.sleep(0.1)
-        textCommand(0x04 | 0x02)  # left to right text
-        time.sleep(0.1)
 
-        firstTime = False
-    count = 0
-    row = 0
+    for retries in range(10):
+        try:
+            if clear or firstTime:
+                textCommand(0x01)  # clear display
+                time.sleep(0.1)
+                textCommand(0x08 | 0x04)  # display on, no cursor
+                time.sleep(0.1)
+                textCommand(0x20 | 0x08)  # two line
+                time.sleep(0.1)
+                textCommand(0x04 | 0x02)  # left to right text
+                time.sleep(0.1)
 
-    line1 = []
-    line2 = []
-    for c in text:
-        if c == "\n":
-            row = 1
+                firstTime = False
             count = 0
-        elif row == 0:
-            line1 += [ord(c)]
-        elif row == 1:
-            line2 += [ord(c)]
-        count += 1
-        if count >= 16:
-            row = 1
-        if count>=32:
-            break
-    textData1 = line1 + (16 - len(line1)) * [ord(" ")]
-    textData2 = line2 + (16 - len(line2)) * [ord(" ")]
-    thisData = [textData1, textData2]
-    if thisData != _prevData:
-        _prevData = thisData
-        textCommand(0x80)  # line 1 select
-        bus.write_i2c_block_data(DISPLAY_TEXT_ADDR, 0x40, textData1)
-        textCommand(0xC0)  # line 2 select
-        bus.write_i2c_block_data(DISPLAY_TEXT_ADDR, 0x40, textData2)
+            row = 0
 
+            line1 = []
+            line2 = []
+            for c in text:
+                if c == "\n":
+                    row = 1
+                    count = 0
+                elif row == 0:
+                    line1 += [ord(c)]
+                elif row == 1:
+                    line2 += [ord(c)]
+                count += 1
+                if count >= 16:
+                    row = 1
+                if count>=32:
+                    break
+            textData1 = line1 + (16 - len(line1)) * [ord(" ")]
+            textData2 = line2 + (16 - len(line2)) * [ord(" ")]
+            thisData = [textData1, textData2]
+            if thisData != _prevData:
+                _prevData = thisData
+                textCommand(0x80)  # line 1 select
+                bus.write_i2c_block_data(DISPLAY_TEXT_ADDR, 0x40, textData1)
+                textCommand(0xC0)  # line 2 select
+                bus.write_i2c_block_data(DISPLAY_TEXT_ADDR, 0x40, textData2)
+            return
+        except IOError:
+            time.sleep(0.01)
+    print("Failed to write to LCD display after 10 attempts, is it connected?", file=sys.stderr)
 
 def set_text(*args, **kwargs):
     setText(*args, **kwargs)
